@@ -106,24 +106,13 @@
   <div class="stats">Your honey: <span class="value" id="honey">0</span></div>
   <!-- Admin panel will be injected if ?admin=true -->
   <script>
-    // Level JSON with 12 flowers
-    const levelData = {
-      aspect: "9:16",
-      flowers: [
-        { x: 0.2, y: 0.1, size: 0.08, petals: 6, color: "pink",      fill: 0.5 },
-        { x: 0.7, y: 0.15, size: 0.1,  petals: 5, color: "violet",    fill: 0.8 },
-        { x: 0.4, y: 0.25, size: 0.12, petals: 7, color: "lightblue", fill: 0.3 },
-        { x: 0.6, y: 0.35, size: 0.09, petals: 6, color: "salmon",    fill: 0.6 },
-        { x: 0.3, y: 0.45, size: 0.1,  petals: 7, color: "plum",      fill: 0.2 },
-        { x: 0.75,y: 0.5,  size: 0.11, petals: 6, color: "lightgreen",fill: 0.7 },
-        { x: 0.2, y: 0.6,  size: 0.08, petals: 5, color: "lightyellow",fill:0.4 },
-        { x: 0.5, y: 0.65, size: 0.1,  petals: 7, color: "pink",      fill: 0.5 },
-        { x: 0.8, y: 0.7,  size: 0.09, petals: 6, color: "violet",    fill: 0.6 },
-        { x: 0.35,y: 0.8,  size: 0.12, petals: 5, color: "lightblue", fill: 0.3 },
-        { x: 0.6, y: 0.85, size: 0.1,  petals: 7, color: "salmon",    fill: 0.5 },
-        { x: 0.45,y: 0.95, size: 0.09, petals: 6, color: "plum",      fill: 0.7 },
-      ]
-    };
+    const SERVER = "https://flowers-backend.htl.dev";
+    const LEVEL_URL = SERVER + "/api/level";
+    const ADMIN_RESTART_URL = SERVER + "/api/admin/restart";
+    const HARVEST_URL = (id) => SERVER + "/api/harvest/" + id;
+    const EVENTS_URL = SERVER + "/api/events";
+
+    var levelData;
 
     const playArea = document.getElementById("playArea");
     const honeyEl = document.getElementById("honey");
@@ -239,14 +228,23 @@
       });
     }
 
-    function buildLevel(data) {
+    async function fetchLevel() {
+      try {
+        const res = await fetch(LEVEL_URL);
+        if (!res.ok) throw new Error("Failed to load level");
+        levelData = await res.json();
+      } catch (e) {
+        console.error("Error fetching level", e);
+      }
+    }
+
+    function buildLevel() {
       playArea.innerHTML = "";
-      data.flowers.forEach(f => playArea.appendChild(createFlower(f)));
+      levelData.flowers.forEach(f => playArea.appendChild(createFlower(f)));
     }
 
     function init() {
-      resizePlayArea();
-      buildLevel(levelData);
+      fetchLevel().then(buildLevel).then(resizePlayArea);
     }
 
     // Admin panel creation
@@ -261,7 +259,7 @@
 
         document.getElementById("restartBtn").addEventListener("click", async () => {
           console.log("Sending restart command to server...");
-          await fetch('/api/admin/restart', { method: 'POST' });
+          await fetch(ADMIN_RESTART_URL, { method: 'POST' });
           init();
         });
       }
@@ -273,16 +271,13 @@
     setInterval(refillFlowers, 2000);
     window.addEventListener("resize", init);
 
-    const es = new EventSource('/api/events');
+    const es = new EventSource(EVENTS_URL);
     es.onmessage = async (msg) => {
       const evt = JSON.parse(msg.data);
       if (evt.type === 'levelRestarted') {
-        // Neues Level holen und neu rendern
-        const res = await fetch('/api/level');
-        const level = await res.json();
-        currentLevel = level;
         resizePlayArea();
-        buildLevel(level);
+        await fetchLevel();
+        buildLevel();
       }
       if (evt.type === "harvest") {
         const id = evt.flowerId;
