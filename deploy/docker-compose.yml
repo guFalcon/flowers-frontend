@@ -1,0 +1,16 @@
+services:
+
+  test:
+    image: gufalcon/flowers-frontend:latest
+    restart: unless-stopped
+    environment:
+      - INTERNAL_PORT=8080
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.flowers-frontend.rule=Host(`flowers.unterrainer.info`)
+      - traefik.http.services.flowers-frontend.loadbalancer.server.port=8080
+
+networks:
+  default:
+    name: proxy_default
+    external: true
