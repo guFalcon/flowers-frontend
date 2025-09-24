@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Honey Meadow</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     html, body {
       margin: 0; padding: 0; height: 100%; width: 100%;
@@ -47,48 +48,85 @@
       bottom: 10px; left: 12px;
       z-index: 20;
       font-size: clamp(12px, 1.8vw, 28px);
-      opacity: 0.8;
+      opacity: 0.9;
       pointer-events: auto;
-      background: rgba(255,255,255,0.7);
-      border-radius: 8px;
-      padding: 8px 12px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      background: rgba(255,255,255,0.78);
+      border-radius: 10px;
+      padding: clamp(6px, 1.2vw, 12px);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      display: grid;
+      gap: clamp(6px, 1vw, 12px);
+      align-items: start;
     }
+    .admin-title { font-weight: 700; opacity: 0.8; }
+    .admin-row { display: flex; gap: clamp(6px, 1vw, 12px); align-items: center; flex-wrap: wrap; }
     .admin-panel button {
       font-size: inherit;
-      padding: 4px 8px;
+      padding: .4em .6em;
       border: none;
-      border-radius: 4px;
+      border-radius: 6px;
       background: #ffb347;
       cursor: pointer;
-      margin-top: 4px;
     }
-    .admin-panel button:hover {
-      background: #ffa500;
+    .admin-panel button:hover { background: #ffa500; }
+
+    /* QR inside admin panel (scales with screen) */
+    .admin-qr {
+      display: block;
+      max-width: clamp(120px, 22vw, 360px);
+      max-height: clamp(120px, 22vh, 360px);
+      width: auto; height: auto;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.2);
+      image-rendering: crisp-edges;
     }
 
-    @keyframes pop {
-      0% { transform: scale(1) }
-      50% { transform: scale(0.9) }
-      100% { transform: scale(1) }
+    /* Non-admin: floating QR button bottom-left */
+    .qr-fab {
+      position: fixed; bottom: 10px; left: 12px; z-index: 20; pointer-events: auto;
+      display: inline-flex; align-items: center; gap: .5em;
+      font-size: clamp(12px, 1.8vw, 28px);
+      background: rgba(255,255,255,0.78); border-radius: 999px; padding: .45em .7em;
+      box-shadow: 0 2px 6px rgba(0,0,0,.2); cursor: pointer;
     }
+    .qr-fab:hover { background: rgba(255,255,255,0.9); }
+
+    /* Modal for QR on non-admin */
+    .modal { position: fixed; inset: 0; z-index: 100; display: none; }
+    .modal.open { display: block; }
+    .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.45); }
+    .modal-content {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: #fff; border-radius: 12px; padding: clamp(10px, 2vw, 16px);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      max-width: min(92vw, 92vh); max-height: min(92vh, 92vw);
+      display: grid; gap: clamp(8px, 2vw, 16px); justify-items: center;
+    }
+    .modal img {
+      max-width: 88vw; max-height: 78vh; width: auto; height: auto;
+      image-rendering: crisp-edges; border-radius: 8px;
+    }
+    .modal-close {
+      align-self: center;
+      font-size: clamp(14px, 2.2vw, 24px);
+      padding: .35em .7em; border-radius: 8px; border: none; background: #eee; cursor: pointer;
+    }
+    .modal-close:hover { background: #e5e5e5; }
+
+    @keyframes pop { 0% { transform: scale(1) } 50% { transform: scale(0.9) } 100% { transform: scale(1) } }
     .center.depleted { animation: pop 140ms ease-out; }
 
     /* Flowers */
     .flower { position: absolute; transform-origin: center; pointer-events: none; }
     .petal  { position: absolute; border-radius: 50%; opacity: 0.85; pointer-events: none; }
-    .fill   {
-      position: absolute; border-radius: 50%; background: orange;
-      transform: scale(0); transform-origin: center; transition: transform 0.3s;
-      z-index: 1; pointer-events: none;
-    }
-    .center {
-      position: absolute; border-radius: 50%;
-      background: gold; opacity: 0.5;
-      box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
-      z-index: 2; transition: transform 0.12s ease;
-      pointer-events: auto; cursor: pointer;
-    }
+    .fill   { position: absolute; border-radius: 50%; background: orange;
+              transform: scale(0); transform-origin: center; transition: transform 0.3s;
+              z-index: 1; pointer-events: none; }
+    .center { position: absolute; border-radius: 50%;
+              background: gold; opacity: 0.5;
+              box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+              z-index: 2; transition: transform 0.12s ease;
+              pointer-events: auto; cursor: pointer; }
 
     @keyframes shake {
       0%,100% { transform: translateX(0); }
@@ -104,21 +142,34 @@
   <h1>Honey Meadow 🐝</h1>
   <div class="play-area" id="playArea"></div>
   <div class="stats">Your honey: <span class="value" id="honey">0</span></div>
-  <!-- Admin panel will be injected if ?admin=true -->
+
+  <!-- Non-admin QR modal -->
+  <div class="modal" id="qrModal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="qrTitle">
+      <strong id="qrTitle" style="font-size: clamp(14px,2.2vw,24px)">Scan to join</strong>
+      <img src="qr.png" alt="Join QR code" />
+      <button class="modal-close" data-close-modal>Close</button>
+    </div>
+  </div>
+
   <script>
+    // ====== Backend URLs ======
     const SERVER = "https://flowers-backend.htl.dev";
     const LEVEL_URL = SERVER + "/api/level";
     const ADMIN_RESTART_URL = SERVER + "/api/admin/restart";
     const HARVEST_URL = (id) => SERVER + "/api/harvest/" + id;
     const EVENTS_URL = SERVER + "/api/events";
 
-    var levelData;
-
+    // ====== State ======
+    let levelData;
     const playArea = document.getElementById("playArea");
     const honeyEl = document.getElementById("honey");
+    const qrModal = document.getElementById("qrModal");
+    const isAdmin = new URLSearchParams(window.location.search).get("admin") === "true";
     let userHoney = 0;
 
-    /** Resize play area to maintain 9:16 aspect */
+    // ====== Layout helpers ======
     function resizePlayArea() {
       const aspect = 9/16;
       const availableHeight = window.innerHeight - 80; 
@@ -133,11 +184,18 @@
       playArea.style.height = height + "px";
     }
 
-    /** Create a flower */
+    function updateFill(flowerEl) {
+      const fillEl = flowerEl.querySelector(".fill");
+      const fillValue = parseFloat(flowerEl.dataset.fill);
+      fillEl.style.transform = `scale(${fillValue})`;
+    }
+
+    // ====== Flower creation ======
     function createFlower(data) {
       const root = document.createElement("div");
       root.className = "flower";
       root.dataset.fill = data.fill;
+      if (data.id) root.dataset.id = data.id; // wichtig für SSE-Updates
 
       const areaW = playArea.clientWidth;
       const areaH = playArea.clientHeight;
@@ -185,21 +243,25 @@
 
       centerEl.addEventListener("click", async (ev) => {
         try {
-          const res = await fetch(HARVEST_URL(f.id), { method: "POST" });
-          if (!res.ok) return; // nichts hochzählen
+          const id = data.id ?? root.dataset.id;
+          const res = await fetch(HARVEST_URL(id), { method: "POST" });
+          if (!res.ok) return;
 
-          const json = await res.json();
+          const json = await res.json(); // { flowerId, honey, fill? }
           const gained = Number(json.honey) || 0;
+
+          // UI nach Serverantwort
+          const el = playArea.querySelector(`.flower[data-id="${json.flowerId}"]`) || root;
+          if (typeof json.fill === "number") {
+            el.dataset.fill = json.fill;
+          } else if (gained > 0) {
+            el.dataset.fill = 0;
+          }
+          updateFill(el);
 
           if (gained > 0) {
             userHoney += Math.round(gained * 10);
             honeyEl.textContent = userHoney;
-
-            const el = playArea.querySelector(`.flower[data-id="${json.flowerId}"]`);
-            if (el) {
-              el.dataset.fill = 0;
-              updateFill(el);
-            }
           } else {
             centerEl.classList.remove("no-honey"); void centerEl.offsetWidth; centerEl.classList.add("no-honey");
             if (navigator.vibrate) navigator.vibrate(15);
@@ -213,91 +275,133 @@
       return root;
     }
 
-    function updateFill(flowerEl) {
-      const fillEl = flowerEl.querySelector(".fill");
-      const fillValue = parseFloat(flowerEl.dataset.fill);
-      fillEl.style.transform = `scale(${fillValue})`;
+    function buildLevel() {
+      if (!levelData || !Array.isArray(levelData.flowers)) {
+        console.error("Invalid or missing level payload", levelData);
+        return;
+      }
+      playArea.innerHTML = "";
+      levelData.flowers.forEach(f => playArea.appendChild(createFlower(f)));
     }
 
-    function refillFlowers() {
+    // ====== Data I/O ======
+    async function fetchLevel() {
+      const res = await fetch(LEVEL_URL);
+      if (!res.ok) throw new Error("Failed to load level");
+      levelData = await res.json();
+    }
+
+    // ====== Admin / QR UI ======
+    function openQrModal() {
+      qrModal.classList.add("open");
+      qrModal.setAttribute("aria-hidden", "false");
+      document.addEventListener("keydown", escClose);
+    }
+    function closeQrModal() {
+      qrModal.classList.remove("open");
+      qrModal.setAttribute("aria-hidden", "true");
+      document.removeEventListener("keydown", escClose);
+    }
+    function escClose(e) { if (e.key === "Escape") closeQrModal(); }
+    qrModal.addEventListener("click", (e) => {
+      if (e.target.matches("[data-close-modal]")) closeQrModal();
+    });
+
+    function mountAdminOrQrButton() {
+      // remove existing
+      document.querySelectorAll(".admin-panel, .qr-fab").forEach(n => n.remove());
+
+      if (isAdmin) {
+        const panel = document.createElement("div");
+        panel.className = "admin-panel";
+        panel.innerHTML = `
+          <div class="admin-title">Admin</div>
+          <div class="admin-row">
+            <button id="restartBtn">Restart Level</button>
+          </div>
+          <div class="admin-row">QR (join):</div>
+          <img src="qr.png" alt="Join QR code" class="admin-qr" />
+        `;
+        document.body.appendChild(panel);
+
+        document.getElementById("restartBtn").addEventListener("click", async () => {
+          try {
+            await fetch(ADMIN_RESTART_URL, { method: 'POST' });
+            await init(); // neues Level holen + rendern
+          } catch (e) { console.error(e); }
+        });
+      } else {
+        const fab = document.createElement("button");
+        fab.className = "qr-fab";
+        fab.type = "button";
+        fab.innerHTML = `📷 Show QR`;
+        fab.addEventListener("click", openQrModal);
+        document.body.appendChild(fab);
+      }
+    }
+
+    // ====== Init / Resize ======
+    async function init() {
+      // Wichtig: zuerst Layout dimensionieren, dann Level laden/rendern
+      resizePlayArea();
+      try {
+        await fetchLevel();
+        buildLevel();
+      } catch (e) {
+        console.error("Error fetching level", e);
+      }
+    }
+
+    function relayout() {
+      // gleiche Level-Daten, nur neu positionieren
+      resizePlayArea();
+      if (levelData) buildLevel();
+    }
+
+    // Admin/QR mounten, initial rendern
+    mountAdminOrQrButton();
+    init();
+
+    // Refill loop wie gehabt
+    setInterval(() => {
       document.querySelectorAll(".flower").forEach(flowerEl => {
         let val = parseFloat(flowerEl.dataset.fill);
         val = Math.min(1, val + (Math.random() * 0.05));
         flowerEl.dataset.fill = val;
         updateFill(flowerEl);
       });
-    }
+    }, 2000);
 
-    async function fetchLevel() {
-      try {
-        const res = await fetch(LEVEL_URL);
-        if (!res.ok) throw new Error("Failed to load level");
-        levelData = await res.json();
-      } catch (e) {
-        console.error("Error fetching level", e);
-      }
-    }
+    // Nur Relayout bei Resize (kein Re-Fetch)
+    window.addEventListener("resize", relayout);
 
-    function buildLevel() {
-      playArea.innerHTML = "";
-      levelData.flowers.forEach(f => playArea.appendChild(createFlower(f)));
-    }
-
-    function init() {
-      fetchLevel().then(buildLevel).then(resizePlayArea);
-    }
-
-    // Admin panel creation
-    function initAdminPanel() {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("admin") === "true") {
-        const panel = document.createElement("div");
-        panel.className = "admin-panel";
-        panel.innerHTML = `<div>Admin Panel</div>
-          <button id="restartBtn">Restart Level</button>`;
-        document.body.appendChild(panel);
-
-        document.getElementById("restartBtn").addEventListener("click", async () => {
-          console.log("Sending restart command to server...");
-          await fetch(ADMIN_RESTART_URL, { method: 'POST' });
-          init();
-        });
-      }
-    }
-
-    // Init
-    init();
-    initAdminPanel();
-    setInterval(refillFlowers, 2000);
-    window.addEventListener("resize", init);
-
-    const es = new EventSource(EVENTS_URL);
-    es.onmessage = async (msg) => {
-      const evt = JSON.parse(msg.data);
-      if (evt.type === 'levelRestarted') {
-        resizePlayArea();
-        await fetchLevel();
-        buildLevel();
-      }
-      if (evt.type === "harvest") {
-        const id = evt.flowerId;
-        if (!id) return;
-
-        const flowerEl = playArea.querySelector(`.flower[data-id="${id}"]`);
-        if (!flowerEl) return;
-
-        flowerEl.dataset.fill = 0;
-        updateFill(flowerEl);
-
-        // some visual feedback
-        const center = flowerEl.querySelector(".center");
-        if (center) {
-          center.classList.remove("depleted");
-          void center.offsetWidth;                 // reflow to restart animation
-          center.classList.add("depleted");
+    // ====== SSE ======
+    try {
+      const es = new EventSource(EVENTS_URL);
+      es.onmessage = async (msg) => {
+        const evt = JSON.parse(msg.data || "{}");
+        if (evt.type === 'levelRestarted') {
+          await init(); // neues Level holen
         }
-      }
-    };
+        if (evt.type === "harvest") {
+          const id = evt.flowerId || evt.id;
+          if (!id) return;
+          const flowerEl = playArea.querySelector(`.flower[data-id="${id}"]`);
+          if (!flowerEl) return;
+          flowerEl.dataset.fill = (typeof evt.fill === "number") ? evt.fill : 0;
+          updateFill(flowerEl);
+          // small visual feedback
+          const center = flowerEl.querySelector(".center");
+          if (center) {
+            center.classList.remove("depleted");
+            void center.offsetWidth;
+            center.classList.add("depleted");
+          }
+        }
+      };
+    } catch (e) {
+      console.warn("SSE failed to start:", e);
+    }
   </script>
 </body>
 </html>

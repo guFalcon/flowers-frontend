@@ -5,6 +5,7 @@ RUN mkdir /app
 
 # Copy whole code to app directory.
 COPY index.html /app
+COPY qr.png /app
 
 # Copy package.json app directory.
 COPY package.json /app
