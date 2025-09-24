@@ -4,7 +4,7 @@ FROM node:22.14-alpine
 RUN mkdir /app
 
 # Copy whole code to app directory.
-COPY src/ /app
+COPY index.html /app
 
 # Copy package.json app directory.
 COPY package.json /app

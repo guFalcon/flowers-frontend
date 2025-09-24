@@ -1,0 +1,30 @@
+{
+  "version": "1.0.0",
+  "configurations": [
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "flowers-frontend",
+      "url": "http://localhost:8080",
+      "webRoot": "${workspaceFolder}"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "node",
+      "program": "${workspaceFolder}/app.js",
+      "env": {
+        "NEXT_AUTOSCAN": "true"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug frontend and Node.js",
+      "configurations": [
+        "flowers-frontend",
+        "node"
+      ]
+    }
+  ]
+}
