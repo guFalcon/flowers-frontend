@@ -1,5 +1,8 @@
 name: PIPELINE
 
+permissions:
+  contents: write
+
 on:
   push:
     branches:
