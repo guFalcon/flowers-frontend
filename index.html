@@ -67,6 +67,13 @@
       background: #ffa500;
     }
 
+    @keyframes pop {
+      0% { transform: scale(1) }
+      50% { transform: scale(0.9) }
+      100% { transform: scale(1) }
+    }
+    .center.depleted { animation: pop 140ms ease-out; }
+
     /* Flowers */
     .flower { position: absolute; transform-origin: center; pointer-events: none; }
     .petal  { position: absolute; border-radius: 50%; opacity: 0.85; pointer-events: none; }
@@ -187,23 +194,29 @@
       centerEl.style.left = (size - centerSize)/2 + "px";
       root.appendChild(centerEl);
 
-      centerEl.addEventListener("click", (ev) => {
-        const fillValue = parseFloat(root.dataset.fill);
-        if (fillValue > 0.1) {
-          userHoney += Math.round(fillValue * 10);
-          root.dataset.fill = 0;
-          honeyEl.textContent = userHoney;
-          updateFill(root);
-        } else {
-          centerEl.classList.remove("no-honey"); void centerEl.offsetWidth; centerEl.classList.add("no-honey");
-          if (navigator.vibrate) navigator.vibrate(15);
-          const { clientX, clientY } = ev;
-          centerEl.style.pointerEvents = "none";
-          const below = document.elementFromPoint(clientX, clientY);
-          centerEl.style.pointerEvents = "auto";
-          if (below && below !== centerEl) {
-            below.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX, clientY }));
+      centerEl.addEventListener("click", async (ev) => {
+        try {
+          const res = await fetch(HARVEST_URL(f.id), { method: "POST" });
+          if (!res.ok) return; // nichts hochzählen
+
+          const json = await res.json();
+          const gained = Number(json.honey) || 0;
+
+          if (gained > 0) {
+            userHoney += Math.round(gained * 10);
+            honeyEl.textContent = userHoney;
+
+            const el = playArea.querySelector(`.flower[data-id="${json.flowerId}"]`);
+            if (el) {
+              el.dataset.fill = 0;
+              updateFill(el);
+            }
+          } else {
+            centerEl.classList.remove("no-honey"); void centerEl.offsetWidth; centerEl.classList.add("no-honey");
+            if (navigator.vibrate) navigator.vibrate(15);
           }
+        } catch (e) {
+          console.error("harvest failed", e);
         }
       });
 
@@ -246,9 +259,9 @@
           <button id="restartBtn">Restart Level</button>`;
         document.body.appendChild(panel);
 
-        document.getElementById("restartBtn").addEventListener("click", () => {
+        document.getElementById("restartBtn").addEventListener("click", async () => {
           console.log("Sending restart command to server...");
-          // TODO: Replace with fetch("/api/admin/restart") or SSE/WS command
+          await fetch('/api/admin/restart', { method: 'POST' });
           init();
         });
       }
@@ -259,6 +272,37 @@
     initAdminPanel();
     setInterval(refillFlowers, 2000);
     window.addEventListener("resize", init);
+
+    const es = new EventSource('/api/events');
+    es.onmessage = async (msg) => {
+      const evt = JSON.parse(msg.data);
+      if (evt.type === 'levelRestarted') {
+        // Neues Level holen und neu rendern
+        const res = await fetch('/api/level');
+        const level = await res.json();
+        currentLevel = level;
+        resizePlayArea();
+        buildLevel(level);
+      }
+      if (evt.type === "harvest") {
+        const id = evt.flowerId;
+        if (!id) return;
+
+        const flowerEl = playArea.querySelector(`.flower[data-id="${id}"]`);
+        if (!flowerEl) return;
+
+        flowerEl.dataset.fill = 0;
+        updateFill(flowerEl);
+
+        // some visual feedback
+        const center = flowerEl.querySelector(".center");
+        if (center) {
+          center.classList.remove("depleted");
+          void center.offsetWidth;                 // reflow to restart animation
+          center.classList.add("depleted");
+        }
+      }
+    };
   </script>
 </body>
 </html>

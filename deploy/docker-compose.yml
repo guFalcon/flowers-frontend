@@ -6,6 +6,7 @@ services:
     restart: unless-stopped
     environment:
       - INTERNAL_PORT=8080
+      - SERVER=https://flowers-backend.htl.dev
     labels:
       - traefik.enable=true
       - traefik.http.routers.flowers-frontend.rule=Host(`flowers.htl.dev`)
