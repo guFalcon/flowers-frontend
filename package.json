@@ -6,7 +6,7 @@
   "scripts": {
     "start": "nodemon ./app.js",
     "build": "echo no build needed",
-    "prod": "node -r dotenv/config ./app.js"
+    "prod": "node ./app.js"
   },
   "dependencies": {
     "express": "^4.18.3",
