@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Honey Meadow</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0; height: 100%; width: 100%;
+      background: linear-gradient(#c9f7c3, #f0fff0);
+      font-family: system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    h1 { color: #444; text-align: center; margin: 10px; }
+
+    /* Portrait play area (9:16), centered horizontally */
+    .play-area {
+      position: absolute;
+      top: 60px;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      overflow: hidden;
+    }
+
+    /* HUD top-right */
+    .stats {
+      position: fixed;
+      top: 10px; right: 12px;
+      pointer-events: none;
+      z-index: 10;
+      font-size: clamp(12px, 1.8vw, 32px);
+      color: #2b2b2b;
+      opacity: 0.6;
+      text-shadow: 0 1px 2px rgba(255,255,255,0.7);
+      font-weight: 600;
+    }
+    .stats .value {
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      padding-left: 6px;
+    }
+
+    /* Admin panel bottom-left */
+    .admin-panel {
+      position: fixed;
+      bottom: 10px; left: 12px;
+      z-index: 20;
+      font-size: clamp(12px, 1.8vw, 28px);
+      opacity: 0.8;
+      pointer-events: auto;
+      background: rgba(255,255,255,0.7);
+      border-radius: 8px;
+      padding: 8px 12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .admin-panel button {
+      font-size: inherit;
+      padding: 4px 8px;
+      border: none;
+      border-radius: 4px;
+      background: #ffb347;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+    .admin-panel button:hover {
+      background: #ffa500;
+    }
+
+    /* Flowers */
+    .flower { position: absolute; transform-origin: center; pointer-events: none; }
+    .petal  { position: absolute; border-radius: 50%; opacity: 0.85; pointer-events: none; }
+    .fill   {
+      position: absolute; border-radius: 50%; background: orange;
+      transform: scale(0); transform-origin: center; transition: transform 0.3s;
+      z-index: 1; pointer-events: none;
+    }
+    .center {
+      position: absolute; border-radius: 50%;
+      background: gold; opacity: 0.5;
+      box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+      z-index: 2; transition: transform 0.12s ease;
+      pointer-events: auto; cursor: pointer;
+    }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20% { transform: translateX(-2px); }
+      40% { transform: translateX(2px); }
+      60% { transform: translateX(-2px); }
+      80% { transform: translateX(2px); }
+    }
+    .no-honey { animation: shake 180ms linear; }
+  </style>
+</head>
+<body>
+  <h1>Honey Meadow 🐝</h1>
+  <div class="play-area" id="playArea"></div>
+  <div class="stats">Your honey: <span class="value" id="honey">0</span></div>
+  <!-- Admin panel will be injected if ?admin=true -->
+  <script>
+    // Level JSON with 12 flowers
+    const levelData = {
+      aspect: "9:16",
+      flowers: [
+        { x: 0.2, y: 0.1, size: 0.08, petals: 6, color: "pink",      fill: 0.5 },
+        { x: 0.7, y: 0.15, size: 0.1,  petals: 5, color: "violet",    fill: 0.8 },
+        { x: 0.4, y: 0.25, size: 0.12, petals: 7, color: "lightblue", fill: 0.3 },
+        { x: 0.6, y: 0.35, size: 0.09, petals: 6, color: "salmon",    fill: 0.6 },
+        { x: 0.3, y: 0.45, size: 0.1,  petals: 7, color: "plum",      fill: 0.2 },
+        { x: 0.75,y: 0.5,  size: 0.11, petals: 6, color: "lightgreen",fill: 0.7 },
+        { x: 0.2, y: 0.6,  size: 0.08, petals: 5, color: "lightyellow",fill:0.4 },
+        { x: 0.5, y: 0.65, size: 0.1,  petals: 7, color: "pink",      fill: 0.5 },
+        { x: 0.8, y: 0.7,  size: 0.09, petals: 6, color: "violet",    fill: 0.6 },
+        { x: 0.35,y: 0.8,  size: 0.12, petals: 5, color: "lightblue", fill: 0.3 },
+        { x: 0.6, y: 0.85, size: 0.1,  petals: 7, color: "salmon",    fill: 0.5 },
+        { x: 0.45,y: 0.95, size: 0.09, petals: 6, color: "plum",      fill: 0.7 },
+      ]
+    };
+
+    const playArea = document.getElementById("playArea");
+    const honeyEl = document.getElementById("honey");
+    let userHoney = 0;
+
+    /** Resize play area to maintain 9:16 aspect */
+    function resizePlayArea() {
+      const aspect = 9/16;
+      const availableHeight = window.innerHeight - 80; 
+      const availableWidth = window.innerWidth;
+      let height = availableHeight;
+      let width = height * aspect;
+      if (width > availableWidth) {
+        width = availableWidth;
+        height = width / aspect;
+      }
+      playArea.style.width = width + "px";
+      playArea.style.height = height + "px";
+    }
+
+    /** Create a flower */
+    function createFlower(data) {
+      const root = document.createElement("div");
+      root.className = "flower";
+      root.dataset.fill = data.fill;
+
+      const areaW = playArea.clientWidth;
+      const areaH = playArea.clientHeight;
+      const px = data.x * areaW;
+      const py = data.y * areaH;
+      const size = data.size * areaH;
+
+      root.style.width = size + "px";
+      root.style.height = size + "px";
+      root.style.left = px - size/2 + "px";
+      root.style.top = py - size/2 + "px";
+
+      // Petals
+      for (let i = 0; i < data.petals; i++) {
+        const petal = document.createElement("div");
+        petal.className = "petal";
+        petal.style.width = size * 0.6 + "px";
+        petal.style.height = size * 0.6 + "px";
+        petal.style.background = data.color;
+        petal.style.top = size * 0.2 + "px";
+        petal.style.left = size * 0.2 + "px";
+        petal.style.transform = `rotate(${i * (360 / data.petals)}deg) translate(0, -${size * 0.3}px)`;
+        root.appendChild(petal);
+      }
+
+      // Center + fill
+      const centerSize = size * 0.35;
+      const fillSize = centerSize * 1.1;
+
+      const fillEl = document.createElement("div");
+      fillEl.className = "fill";
+      fillEl.style.width = fillSize + "px";
+      fillEl.style.height = fillSize + "px";
+      fillEl.style.top = (size - fillSize)/2 + "px";
+      fillEl.style.left = (size - fillSize)/2 + "px";
+      root.appendChild(fillEl);
+
+      const centerEl = document.createElement("div");
+      centerEl.className = "center";
+      centerEl.style.width = centerSize + "px";
+      centerEl.style.height = centerSize + "px";
+      centerEl.style.top = (size - centerSize)/2 + "px";
+      centerEl.style.left = (size - centerSize)/2 + "px";
+      root.appendChild(centerEl);
+
+      centerEl.addEventListener("click", (ev) => {
+        const fillValue = parseFloat(root.dataset.fill);
+        if (fillValue > 0.1) {
+          userHoney += Math.round(fillValue * 10);
+          root.dataset.fill = 0;
+          honeyEl.textContent = userHoney;
+          updateFill(root);
+        } else {
+          centerEl.classList.remove("no-honey"); void centerEl.offsetWidth; centerEl.classList.add("no-honey");
+          if (navigator.vibrate) navigator.vibrate(15);
+          const { clientX, clientY } = ev;
+          centerEl.style.pointerEvents = "none";
+          const below = document.elementFromPoint(clientX, clientY);
+          centerEl.style.pointerEvents = "auto";
+          if (below && below !== centerEl) {
+            below.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX, clientY }));
+          }
+        }
+      });
+
+      updateFill(root);
+      return root;
+    }
+
+    function updateFill(flowerEl) {
+      const fillEl = flowerEl.querySelector(".fill");
+      const fillValue = parseFloat(flowerEl.dataset.fill);
+      fillEl.style.transform = `scale(${fillValue})`;
+    }
+
+    function refillFlowers() {
+      document.querySelectorAll(".flower").forEach(flowerEl => {
+        let val = parseFloat(flowerEl.dataset.fill);
+        val = Math.min(1, val + (Math.random() * 0.05));
+        flowerEl.dataset.fill = val;
+        updateFill(flowerEl);
+      });
+    }
+
+    function buildLevel(data) {
+      playArea.innerHTML = "";
+      data.flowers.forEach(f => playArea.appendChild(createFlower(f)));
+    }
+
+    function init() {
+      resizePlayArea();
+      buildLevel(levelData);
+    }
+
+    // Admin panel creation
+    function initAdminPanel() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("admin") === "true") {
+        const panel = document.createElement("div");
+        panel.className = "admin-panel";
+        panel.innerHTML = `<div>Admin Panel</div>
+          <button id="restartBtn">Restart Level</button>`;
+        document.body.appendChild(panel);
+
+        document.getElementById("restartBtn").addEventListener("click", () => {
+          console.log("Sending restart command to server...");
+          // TODO: Replace with fetch("/api/admin/restart") or SSE/WS command
+          init();
+        });
+      }
+    }
+
+    // Init
+    init();
+    initAdminPanel();
+    setInterval(refillFlowers, 2000);
+    window.addEventListener("resize", init);
+  </script>
+</body>
+</html>
