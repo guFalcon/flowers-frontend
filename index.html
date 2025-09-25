@@ -241,7 +241,7 @@
       document.querySelectorAll(".flower").forEach(flowerEl => {
         let val = parseFloat(flowerEl.dataset.fill);
         let rate = parseFloat(flowerEl.dataset.rate);
-        val = Math.min(1, val + (Math.random() * rate));
+        val = Math.min(1, val + rate);
         flowerEl.dataset.fill = val;
         updateFill(flowerEl);
       });
