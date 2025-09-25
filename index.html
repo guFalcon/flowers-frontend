@@ -66,6 +66,7 @@
       const root = document.createElement("div");
       root.className = "flower";
       root.dataset.fill = data.fill;
+      root.dataset.rate = data.rate;
       if (data.id) root.dataset.id = data.id; // important for SSE updates
 
       const areaW = playArea.clientWidth;
@@ -134,7 +135,9 @@
             userHoney += Math.round(gained * 10);
             honeyEl.textContent = userHoney;
           } else {
-            centerEl.classList.remove("no-honey"); void centerEl.offsetWidth; centerEl.classList.add("no-honey");
+            centerEl.classList.remove("no-honey");
+            void centerEl.offsetWidth;
+            centerEl.classList.add("no-honey");
             if (navigator.vibrate) navigator.vibrate(15);
           }
         } catch (e) {
@@ -237,7 +240,8 @@
     setInterval(() => {
       document.querySelectorAll(".flower").forEach(flowerEl => {
         let val = parseFloat(flowerEl.dataset.fill);
-        val = Math.min(1, val + (Math.random() * 0.05));
+        let rate = parseFloat(flowerEl.dataset.rate);
+        val = Math.min(1, val + (Math.random() * rate));
         flowerEl.dataset.fill = val;
         updateFill(flowerEl);
       });
@@ -282,6 +286,11 @@
             void center.offsetWidth;
             center.classList.add("depleted");
           }
+        }
+        if (data.type === "level-update") {
+          const level = JSON.parse(data.level);
+          levelData = level;
+          buildLevel();
         }
       },
       
