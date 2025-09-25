@@ -4,144 +4,13 @@
   <meta charset="UTF-8" />
   <title>Honey Meadow</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    html, body {
-      margin: 0; padding: 0; height: 100%; width: 100%;
-      background: linear-gradient(#c9f7c3, #f0fff0);
-      font-family: system-ui, sans-serif;
-      overflow: hidden;
-    }
-
-    h1 { color: #444; text-align: center; margin: 10px; }
-
-    /* Portrait play area (9:16), centered horizontally */
-    .play-area {
-      position: absolute;
-      top: 60px;
-      bottom: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      overflow: hidden;
-    }
-
-    /* HUD top-right */
-    .stats {
-      position: fixed;
-      top: 10px; right: 12px;
-      pointer-events: none;
-      z-index: 10;
-      font-size: clamp(12px, 1.8vw, 32px);
-      color: #2b2b2b;
-      opacity: 0.6;
-      text-shadow: 0 1px 2px rgba(255,255,255,0.7);
-      font-weight: 600;
-    }
-    .stats .value {
-      font-variant-numeric: tabular-nums;
-      font-weight: 700;
-      padding-left: 6px;
-    }
-
-    /* Admin panel bottom-left */
-    .admin-panel {
-      position: fixed;
-      bottom: 10px; left: 12px;
-      z-index: 20;
-      font-size: clamp(12px, 1.8vw, 28px);
-      opacity: 0.9;
-      pointer-events: auto;
-      background: rgba(255,255,255,0.78);
-      border-radius: 10px;
-      padding: clamp(6px, 1.2vw, 12px);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-      display: grid;
-      gap: clamp(6px, 1vw, 12px);
-      align-items: start;
-    }
-    .admin-title { font-weight: 700; opacity: 0.8; }
-    .admin-row { display: flex; gap: clamp(6px, 1vw, 12px); align-items: center; flex-wrap: wrap; }
-    .admin-panel button {
-      font-size: inherit;
-      padding: .4em .6em;
-      border: none;
-      border-radius: 6px;
-      background: #ffb347;
-      cursor: pointer;
-    }
-    .admin-panel button:hover { background: #ffa500; }
-
-    /* QR inside admin panel (scales with screen) */
-    .admin-qr {
-      display: block;
-      max-width: clamp(120px, 22vw, 360px);
-      max-height: clamp(120px, 22vh, 360px);
-      width: auto; height: auto;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,.2);
-      image-rendering: crisp-edges;
-    }
-
-    /* Non-admin: floating QR button bottom-left */
-    .qr-fab {
-      position: fixed; bottom: 10px; left: 12px; z-index: 20; pointer-events: auto;
-      display: inline-flex; align-items: center; gap: .5em;
-      font-size: clamp(12px, 1.8vw, 28px);
-      background: rgba(255,255,255,0.78); border-radius: 999px; padding: .45em .7em;
-      box-shadow: 0 2px 6px rgba(0,0,0,.2); cursor: pointer;
-    }
-    .qr-fab:hover { background: rgba(255,255,255,0.9); }
-
-    /* Modal for QR on non-admin */
-    .modal { position: fixed; inset: 0; z-index: 100; display: none; }
-    .modal.open { display: block; }
-    .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.45); }
-    .modal-content {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      background: #fff; border-radius: 12px; padding: clamp(10px, 2vw, 16px);
-      box-shadow: 0 10px 30px rgba(0,0,0,.35);
-      max-width: min(92vw, 92vh); max-height: min(92vh, 92vw);
-      display: grid; gap: clamp(8px, 2vw, 16px); justify-items: center;
-    }
-    .modal img {
-      max-width: 88vw; max-height: 78vh; width: auto; height: auto;
-      image-rendering: crisp-edges; border-radius: 8px;
-    }
-    .modal-close {
-      align-self: center;
-      font-size: clamp(14px, 2.2vw, 24px);
-      padding: .35em .7em; border-radius: 8px; border: none; background: #eee; cursor: pointer;
-    }
-    .modal-close:hover { background: #e5e5e5; }
-
-    @keyframes pop { 0% { transform: scale(1) } 50% { transform: scale(0.9) } 100% { transform: scale(1) } }
-    .center.depleted { animation: pop 140ms ease-out; }
-
-    /* Flowers */
-    .flower { position: absolute; transform-origin: center; pointer-events: none; }
-    .petal  { position: absolute; border-radius: 50%; opacity: 0.85; pointer-events: none; }
-    .fill   { position: absolute; border-radius: 50%; background: orange;
-              transform: scale(0); transform-origin: center; transition: transform 0.3s;
-              z-index: 1; pointer-events: none; }
-    .center { position: absolute; border-radius: 50%;
-              background: gold; opacity: 0.5;
-              box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
-              z-index: 2; transition: transform 0.12s ease;
-              pointer-events: auto; cursor: pointer; }
-
-    @keyframes shake {
-      0%,100% { transform: translateX(0); }
-      20% { transform: translateX(-2px); }
-      40% { transform: translateX(2px); }
-      60% { transform: translateX(-2px); }
-      80% { transform: translateX(2px); }
-    }
-    .no-honey { animation: shake 180ms linear; }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>Honey Meadow 🐝</h1>
+  <h1>flowers.htl.dev 🐝</h1>
   <div class="play-area" id="playArea"></div>
-  <div class="stats">Your honey: <span class="value" id="honey">0</span></div>
+  <div class="stats">Honey: <span class="value" id="honey">0</span></div>
+  <div class="connection-status disconnected" id="connectionStatus">⚫ Disconnected</div>
 
   <!-- Non-admin QR modal -->
   <div class="modal" id="qrModal" aria-hidden="true">
@@ -153,6 +22,7 @@
     </div>
   </div>
 
+  <script src="sse-connection.js"></script>
   <script>
     // ====== Backend URLs ======
     const SERVER = "https://flowers-backend.htl.dev";
@@ -165,6 +35,7 @@
     let levelData;
     const playArea = document.getElementById("playArea");
     const honeyEl = document.getElementById("honey");
+    const connectionStatusEl = document.getElementById("connectionStatus");
     const qrModal = document.getElementById("qrModal");
     const isAdmin = new URLSearchParams(window.location.search).get("admin") === "true";
     let userHoney = 0;
@@ -195,7 +66,7 @@
       const root = document.createElement("div");
       root.className = "flower";
       root.dataset.fill = data.fill;
-      if (data.id) root.dataset.id = data.id; // wichtig für SSE-Updates
+      if (data.id) root.dataset.id = data.id; // important for SSE updates
 
       const areaW = playArea.clientWidth;
       const areaH = playArea.clientHeight;
@@ -250,7 +121,7 @@
           const json = await res.json(); // { flowerId, honey, fill? }
           const gained = Number(json.honey) || 0;
 
-          // UI nach Serverantwort
+          // Update UI based on server response
           const el = playArea.querySelector(`.flower[data-id="${json.flowerId}"]`) || root;
           if (typeof json.fill === "number") {
             el.dataset.fill = json.fill;
@@ -327,7 +198,7 @@
         document.getElementById("restartBtn").addEventListener("click", async () => {
           try {
             await fetch(ADMIN_RESTART_URL, { method: 'POST' });
-            await init(); // neues Level holen + rendern
+            await init(); // get new level and render it
           } catch (e) { console.error(e); }
         });
       } else {
@@ -342,7 +213,7 @@
 
     // ====== Init / Resize ======
     async function init() {
-      // Wichtig: zuerst Layout dimensionieren, dann Level laden/rendern
+      // Important: first dimension the layout, then load/render level
       resizePlayArea();
       try {
         await fetchLevel();
@@ -372,24 +243,38 @@
       });
     }, 2000);
 
-    // Nur Relayout bei Resize (kein Re-Fetch)
+    // Only re-layout on resize (no re-fetch)
     window.addEventListener("resize", relayout);
 
-    // ====== SSE ======
-    try {
-      const es = new EventSource(EVENTS_URL);
-      es.onmessage = async (msg) => {
-        const evt = JSON.parse(msg.data || "{}");
-        if (evt.type === 'levelRestarted') {
-          await init(); // neues Level holen
+    // ====== SSE Connection Setup ======
+    // Create SSE connection manager
+    const sseManager = new SSEConnectionManager(EVENTS_URL, {
+      maxReconnectAttempts: 10,
+      initialReconnectDelay: 1000,
+      maxReconnectDelay: 30000,
+      
+      // Handle connection status changes
+      onConnectionChange: (status, message) => {
+        connectionStatusEl.className = `connection-status ${status}`;
+        connectionStatusEl.textContent = message;
+      },
+      
+      // Handle incoming messages
+      onMessage: async (data, event) => {
+        if (data.type === 'levelRestarted') {
+          await init(); // get new level
         }
-        if (evt.type === "harvest") {
-          const id = evt.flowerId || evt.id;
+        
+        if (data.type === "harvest") {
+          const id = data.flowerId || data.id;
           if (!id) return;
+          
           const flowerEl = playArea.querySelector(`.flower[data-id="${id}"]`);
           if (!flowerEl) return;
-          flowerEl.dataset.fill = (typeof evt.fill === "number") ? evt.fill : 0;
+          
+          flowerEl.dataset.fill = (typeof data.fill === "number") ? data.fill : 0;
           updateFill(flowerEl);
+          
           // small visual feedback
           const center = flowerEl.querySelector(".center");
           if (center) {
@@ -398,10 +283,16 @@
             center.classList.add("depleted");
           }
         }
-      };
-    } catch (e) {
-      console.warn("SSE failed to start:", e);
-    }
+      },
+      
+      // Handle errors
+      onError: (error, type) => {
+        console.error(`SSE Error (${type}):`, error);
+      }
+    });
+
+    // Start the connection
+    sseManager.connect();
   </script>
 </body>
 </html>

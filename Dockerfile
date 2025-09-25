@@ -6,6 +6,8 @@ RUN mkdir /app
 # Copy whole code to app directory.
 COPY index.html /app
 COPY qr.png /app
+COPY sse-connection.js /app
+COPY styles.css /app
 
 # Copy package.json app directory.
 COPY package.json /app
