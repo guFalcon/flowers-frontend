@@ -40,6 +40,39 @@
     const isAdmin = new URLSearchParams(window.location.search).get("admin") === "true";
     let userHoney = 0;
 
+    // ====== Audio System ======
+    const audioCache = {};
+    
+    function loadAudio(filename) {
+      if (!audioCache[filename]) {
+        audioCache[filename] = new Audio(filename);
+        audioCache[filename].preload = "auto";
+        // Handle loading errors gracefully
+        audioCache[filename].onerror = () => {
+          console.warn(`Failed to load audio file: ${filename}`);
+        };
+      }
+      return audioCache[filename];
+    }
+
+    function playSound(filename, volume = 1.0) {
+      try {
+        const audio = loadAudio(filename);
+        audio.volume = Math.max(0, Math.min(1, volume));
+        // Clone the audio to allow multiple simultaneous plays
+        const audioClone = audio.cloneNode();
+        audioClone.play().catch(e => {
+          console.warn(`Failed to play sound ${filename}:`, e);
+        });
+      } catch (e) {
+        console.warn(`Error playing sound ${filename}:`, e);
+      }
+    }
+
+    // Preload sounds
+    loadAudio('slurp.wav');
+    loadAudio('punch.mp3');
+
     // ====== Layout helpers ======
     function resizePlayArea() {
       const aspect = 9/16;
@@ -134,10 +167,17 @@
           if (gained > 0) {
             userHoney += Math.round(gained * 10);
             honeyEl.textContent = userHoney;
+            
+            // Play slurp sound when successfully draining honey
+            playSound('slurp.wav', 0.7); // 70% volume
           } else {
             centerEl.classList.remove("no-honey");
             void centerEl.offsetWidth;
             centerEl.classList.add("no-honey");
+            
+            // Play punch sound when clicking empty flower
+            playSound('punch.mp3', 0.6); // 60% volume
+            
             if (navigator.vibrate) navigator.vibrate(15);
           }
         } catch (e) {

@@ -8,6 +8,8 @@ COPY index.html /app
 COPY qr.png /app
 COPY sse-connection.js /app
 COPY styles.css /app
+COPY slurp.wav /app
+COPY punch.mp3 /app
 
 # Copy package.json app directory.
 COPY package.json /app
