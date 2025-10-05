@@ -26,8 +26,8 @@
   <script src="bee.js"></script>
   <script>
     // ====== Backend URLs ======
-    //const SERVER = "https://flowers-backend.htl.dev";
-    const SERVER = "http://localhost:8084"; // for local testing
+    const SERVER = "https://flowers-backend.htl.dev";
+    //const SERVER = "http://localhost:8084"; // for local testing
     const LEVEL_URL = SERVER + "/api/level";
     const ADMIN_RESTART_URL = SERVER + "/api/admin/restart";
     const HARVEST_URL = (id) => SERVER + "/api/harvest/" + id;
@@ -260,6 +260,22 @@
       }
     }
 
+    function playBeeLoop() {
+      if (beeLoopAudio && !beeLoopAudio.paused) return; // Already playing
+      beeLoopAudio = new Audio('bee-loop.mp3');
+      beeLoopAudio.loop = true;
+      beeLoopAudio.volume = 0.5;
+      beeLoopAudio.play().catch(() => {});
+    }
+
+    function stopBeeLoop() {
+      if (beeLoopAudio) {
+        beeLoopAudio.pause();
+        beeLoopAudio.currentTime = 0;
+        beeLoopAudio = null;
+      }
+    }
+
     // Admin/QR mount, initial render
     mountAdminOrQrButton();
     init();
@@ -274,10 +290,14 @@
       bee.flightId++; // Increment for a new flight
       const thisFlight = bee.flightId;
 
+      playBeeLoop();
       bee.moveTo(relX, relY);
 
       // Wait for bee to "fly" there
       await new Promise(res => setTimeout(res, duration));
+
+      // Stop bee sound (regardless of harvest/divert)
+      stopBeeLoop();
 
       // Only harvest if this is still the latest flight
       if (thisFlight !== bee.flightId) return;
