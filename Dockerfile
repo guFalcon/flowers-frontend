@@ -11,6 +11,7 @@ COPY bee.js /app
 COPY bee.png /app
 COPY bees.mp3 /app
 COPY bump.mp3 /app
+COPY favicon.ico /app
 COPY grass.jpg /app
 COPY index.html /app
 COPY qr.png /app

@@ -1,17 +1,17 @@
 class Bee {
-  baseSpeed = 4.5; // seconds per unit distance
+  beeRelX = 0.5;
+  beeRelY = 0.5;
+  jitterAmount = 0.025;
+  baseSpeed = 5; // seconds per unit distance
   flightId = 0;
   isFlying = false;
   flightEndTime = null;
+  jitterActive = false;
+  jitterFrame = null;
 
   constructor(playArea, audioSystem) {
     this.playArea = playArea;
     this.audioSystem = audioSystem;
-    this.beeRelX = 0.5;
-    this.beeRelY = 0.5;
-    this.jitterAmount = 0.025; // increased jitter
-    this.jitterActive = false;
-    this.jitterFrame = null;
     this.createElements();
     this.update();
   }
@@ -57,15 +57,17 @@ class Bee {
     this.wrapper.style.transform = `translate(${jitterX * areaW}px, ${jitterY * areaH}px)`;
   }
 
-  getTravelDurationInMillis(targetRelX, targetRelY) {
-    const dx = targetRelX - this.beeRelX;
-    const dy = targetRelY - this.beeRelY;
+  getTravelDurationInMillis(fromRelX, fromRelY, toRelX, toRelY) {
+    const dx = toRelX - fromRelX;
+    const dy = toRelY - fromRelY;
     const dist = Math.sqrt(dx*dx + dy*dy);
-    return dist * this.baseSpeed * 1000; // milliseconds
+    const minDuration = 0.2; // seconds
+    const duration = Math.max(dist * this.baseSpeed, minDuration) * 1000;
+    return duration;
   }
 
   moveTo(relX, relY) {
-    audioSystem.play('bee');
+    this.audioSystem.play('bee');
     this.flightId = (this.flightId || 0) + 1;
     const myFlight = this.flightId;
 
@@ -80,23 +82,21 @@ class Bee {
     const currentRelY = currentTop / areaH;
 
     // Compute duration from actual position
-    const dx = relX - currentRelX;
-    const dy = relY - currentRelY;
-    const dist = Math.sqrt(dx*dx + dy*dy);
-    const minDuration = 0.2; // seconds
-    const duration = Math.max(dist * this.baseSpeed, minDuration);
+    const duration = this.getTravelDurationInMillis(currentRelX, currentRelY, relX, relY);
 
     // Set transition BEFORE updating position
     this.wrapper.style.transition =
-      `left ${duration}s linear, top ${duration}s linear, width 0.2s, height 0.2s, transform 0.12s`;
+      `left ${duration / 1000.0}s linear, top ${duration / 1000.0}s linear, width 0.2s, height 0.2s, transform 0.12s`;
 
     // Now update target position
     this.beeRelX = relX;
     this.beeRelY = relY;
 
     this.isFlying = true;
-    this.flightEndTime = performance.now() + duration * 1000;
-    this.startJitter(duration * 1000, myFlight);
+    this.flightEndTime = performance.now() + duration;
+    this.startJitter(duration, myFlight);
+
+    return duration;
   }
 
   startJitter(duration = 700, flightId = this.flightId) {
@@ -117,7 +117,7 @@ class Bee {
         this.isFlying = false;
         this.flightEndTime = null;
         if (typeof audioSystem !== "undefined") {
-          audioSystem.stop('bee');
+          this.audioSystem.stop('bee');
         }
         return;
       }

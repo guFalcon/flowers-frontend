@@ -26,6 +26,7 @@
   <script src="bee.js"></script>
   <script src="audio-system.js"></script>
   <script>
+    console.log("App started");
     // ====== Backend URLs ======
     const SERVER = "https://flowers-backend.htl.dev";
     //const SERVER = "http://localhost:8084"; // for local testing
@@ -273,12 +274,9 @@
       const rect = playArea.getBoundingClientRect();
       const relX = (e.clientX - rect.left) / rect.width;
       const relY = (e.clientY - rect.top) / rect.height;
-      const duration = bee.getTravelDurationInMillis(relX, relY);
-
-      bee.flightId++; // Increment for a new flight
+      
+      const duration = bee.moveTo(relX, relY);
       const thisFlight = bee.flightId;
-
-      bee.moveTo(relX, relY);
 
       // Wait for bee to "fly" there
       await new Promise(res => setTimeout(res, duration));
