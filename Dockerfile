@@ -7,6 +7,7 @@ RUN mkdir /app
 COPY index.html /app
 COPY qr.png /app
 COPY sse-connection.js /app
+COPY bee.js /app
 COPY styles.css /app
 COPY slurp.mp3 /app
 COPY bump.mp3 /app

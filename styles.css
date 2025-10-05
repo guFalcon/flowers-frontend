@@ -23,16 +23,48 @@ body::before {
   background: rgba(0,0,0,0.2);
 }
 
-#bee {
+#beeTintWrapper {
   position: absolute;
-  width: 48px;
-  height: 48px;
+  display: inline-block;
+  isolation: isolate;
+  transition: width 0.2s, height 0.2s, transform 0.12s;
+  z-index: 5000;
+  left: 50%;
+  top: 50%;
+  width: 7vh;
+  height: 7vh;
+  pointer-events: none;
+}
+
+#bee {
+  width: 100%;
+  height: 100%;
   background: url('bee.png') center/contain no-repeat;
   pointer-events: none;
-  z-index: 50;
-  left: 50%;
-  top: 90%;
-  transition: left 0.7s cubic-bezier(.6,-0.28,.74,.05), top 0.7s cubic-bezier(.6,-0.28,.74,.05);
+  z-index: 1;
+  position: absolute;
+  left: 0; top: 0;
+}
+
+#beeTintWrapper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--bee-tint, #fff2ae); /* Default yellow */
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 2;
+  border-radius: 0; /* Remove the circle shape */
+  /* Use the bee image as a mask */
+  mix-blend-mode: multiply;
+  mask-image: url('bee.png');
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-image: url('bee.png');
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
 }
 
 h1 { 

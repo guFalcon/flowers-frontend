@@ -12,8 +12,6 @@
   <div class="stats">Honey: <span class="value" id="honey">0</span></div>
   <div class="connection-status disconnected" id="connectionStatus">⚫ Disconnected</div>
 
-  <div id="bee"></div>
-
   <!-- Non-admin QR modal -->
   <div class="modal" id="qrModal" aria-hidden="true">
     <div class="modal-backdrop" data-close-modal></div>
@@ -25,6 +23,7 @@
   </div>
 
   <script src="sse-connection.js"></script>
+  <script src="bee.js"></script>
   <script>
     // ====== Backend URLs ======
     //const SERVER = "https://flowers-backend.htl.dev";
@@ -158,51 +157,28 @@
       }
       root.appendChild(centerEl);
 
-      centerEl.addEventListener("click", async (ev) => {
-        try {
-          const id = data.id ?? root.dataset.id;
-          const res = await fetch(HARVEST_URL(id), { method: "POST" });
-          if (!res.ok) return;
-
-          const json = await res.json(); // { flowerId, honey, fill? }
-          const gained = Number(json.honey) || 0;
-
-          // Update UI based on server response
-          const el = playArea.querySelector(`.flower[data-id="${json.flowerId}"]`) || root;
-          if (typeof json.fill === "number") {
-            el.dataset.fill = json.fill;
-            updateFill(el);
-          } else if (gained > 0) {
-            el.dataset.fill = 0;
-            updateFill(el);
-          }
-
-          if (gained > 0) {
-            userHoney += Math.round(gained * 10);
-            honeyEl.textContent = userHoney;
-            // Play slurp sound when successfully draining honey
-            playSound('slurp.mp3', 0.7); // 70% volume
-          } else {
-            // Play bump sound when clicking empty flower (harvest failed)
-            playSound('bump.mp3', 0.6); // 60% volume
-            if (navigator.vibrate) navigator.vibrate(15);
-          }
-        } catch (e) {
-          console.error("harvest failed", e);
-        }
-      });
-
       updateFill(root);
       return root;
     }
+
+    let bee = null;
 
     function buildLevel() {
       if (!levelData || !Array.isArray(levelData.flowers)) {
         console.error("Invalid or missing level payload", levelData);
         return;
       }
-      playArea.innerHTML = "";
+      // Remove all flowers, but NOT the bee
+      Array.from(playArea.children).forEach(child => {
+        if (!child.classList.contains('flower')) {
+          // leave non-flower elements (like the bee)
+          return;
+        }
+        playArea.removeChild(child);
+      });
       levelData.flowers.forEach(f => playArea.appendChild(createFlower(f)));
+      if (!bee) bee = new Bee(playArea);
+      bee.update();
     }
 
     // ====== Data I/O ======
@@ -274,16 +250,95 @@
     }
 
     function relayout() {
-      // gleiche Level-Daten, nur neu positionieren
       resizePlayArea();
-      if (levelData) buildLevel();
+      if (levelData) {
+        buildLevel();
+        if (!bee) bee = new Bee(playArea); {
+          bee.setTint('#FFD600');
+          bee.moveTo(0.5, 0.5);
+        }
+      }
     }
 
-    // Admin/QR mounten, initial rendern
+    // Admin/QR mount, initial render
     mountAdminOrQrButton();
     init();
 
-    // Refill loop wie gehabt
+    // On pointer down, move bee and harvest if needed
+    playArea.addEventListener('pointerdown', async (e) => {
+      const rect = playArea.getBoundingClientRect();
+      const relX = (e.clientX - rect.left) / rect.width;
+      const relY = (e.clientY - rect.top) / rect.height;
+      const duration = bee.getTravelDurationInMillis(relX, relY);
+
+      bee.flightId++; // Increment for a new flight
+      const thisFlight = bee.flightId;
+
+      bee.moveTo(relX, relY);
+
+      // Wait for bee to "fly" there
+      await new Promise(res => setTimeout(res, duration));
+
+      // Only harvest if this is still the latest flight
+      if (thisFlight !== bee.flightId) return;
+
+      // Find the closest center under the click (relative to playArea)
+      const centers = Array.from(playArea.querySelectorAll('.center'));
+      let minDist = Infinity, closest = null;
+      centers.forEach(center => {
+        const crect = center.getBoundingClientRect();
+        const cx = (crect.left + crect.width/2 - rect.left) / rect.width;
+        const cy = (crect.top + crect.height/2 - rect.top) / rect.height;
+        const dist = Math.hypot(cx - relX, cy - relY);
+        if (dist < (crect.width/2)/rect.width) { // inside the center
+          if (dist < minDist) {
+            minDist = dist;
+            closest = center;
+          }
+        }
+      });
+      if (closest) {
+        const root = closest.closest('.flower');
+        const id = root?.dataset.id;
+        const data = levelData.flowers.find(f => f.id == id);
+        if (data) {
+          harvestFlower(closest, data, root);
+        }
+      }
+    });
+
+    async function harvestFlower(centerEl, data, root) {
+      try {
+        const id = data.id ?? root.dataset.id;
+        const res = await fetch(HARVEST_URL(id), { method: "POST" });
+        if (!res.ok) return;
+
+        const json = await res.json(); // { flowerId, honey, fill? }
+        const gained = Number(json.honey) || 0;
+
+        // Update UI based on server response
+        const el = playArea.querySelector(`.flower[data-id="${json.flowerId}"]`) || root;
+        if (typeof json.fill === "number") {
+          el.dataset.fill = json.fill;
+          updateFill(el);
+        } else if (gained > 0) {
+          el.dataset.fill = 0;
+          updateFill(el);
+        }
+
+        if (gained > 0) {
+          userHoney += Math.round(gained * 10);
+          honeyEl.textContent = userHoney;
+          playSound('slurp.mp3', 0.7); // 70% volume
+        } else {
+          playSound('bump.mp3', 0.6); // 60% volume
+          if (navigator.vibrate) navigator.vibrate(15);
+        }
+      } catch (e) {
+        console.error("harvest failed", e);
+      }
+    }
+
     setInterval(() => {
       document.querySelectorAll(".flower").forEach(flowerEl => {
         let val = parseFloat(flowerEl.dataset.fill);
@@ -295,7 +350,10 @@
     }, 2000);
 
     // Only re-layout on resize (no re-fetch)
-    window.addEventListener("resize", relayout);
+    window.addEventListener("resize", () => {
+      relayout();
+      if (bee) bee.update();
+    });
 
     // ====== SSE Connection Setup ======
     // Create SSE connection manager
