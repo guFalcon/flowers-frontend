@@ -41,6 +41,7 @@
     const qrModal = document.getElementById("qrModal");
     const isAdmin = new URLSearchParams(window.location.search).get("admin") === "true";
     let userHoney = 0;
+    let beeLoopAudio = null;
 
     // ====== Audio System ======
     const audioCache = {};
