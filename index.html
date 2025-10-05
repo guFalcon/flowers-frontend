@@ -70,8 +70,8 @@
     }
 
     // Preload sounds
-    loadAudio('slurp.wav');
-    loadAudio('punch.mp3');
+    loadAudio('slurp.mp3');
+    loadAudio('bump.mp3');
 
     // ====== Layout helpers ======
     function resizePlayArea() {
@@ -169,15 +169,15 @@
             honeyEl.textContent = userHoney;
             
             // Play slurp sound when successfully draining honey
-            playSound('slurp.wav', 0.7); // 70% volume
+            playSound('slurp.mp3', 0.7); // 70% volume
           } else {
             centerEl.classList.remove("no-honey");
             void centerEl.offsetWidth;
             centerEl.classList.add("no-honey");
-            
-            // Play punch sound when clicking empty flower
-            playSound('punch.mp3', 0.6); // 60% volume
-            
+
+            // Play bump sound when clicking empty flower
+            playSound('bump.mp3', 0.6); // 60% volume
+
             if (navigator.vibrate) navigator.vibrate(15);
           }
         } catch (e) {
