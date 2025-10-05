@@ -7,10 +7,12 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>flowers.htl.dev 🐝</h1>
+  <h1 style="font-size: clamp(24px, 4vw, 48px); color:lightgoldenrodyellow;">flowers.htl.dev 🐝</h1>
   <div class="play-area" id="playArea"></div>
   <div class="stats">Honey: <span class="value" id="honey">0</span></div>
   <div class="connection-status disconnected" id="connectionStatus">⚫ Disconnected</div>
+
+  <div id="bee"></div>
 
   <!-- Non-admin QR modal -->
   <div class="modal" id="qrModal" aria-hidden="true">
@@ -25,7 +27,8 @@
   <script src="sse-connection.js"></script>
   <script>
     // ====== Backend URLs ======
-    const SERVER = "https://flowers-backend.htl.dev";
+    //const SERVER = "https://flowers-backend.htl.dev";
+    const SERVER = "http://localhost:8084"; // for local testing
     const LEVEL_URL = SERVER + "/api/level";
     const ADMIN_RESTART_URL = SERVER + "/api/admin/restart";
     const HARVEST_URL = (id) => SERVER + "/api/harvest/" + id;
@@ -113,13 +116,18 @@
       root.style.left = px - size/2 + "px";
       root.style.top = py - size/2 + "px";
 
-      // Petals
+      // Petals (support petalColors array if present)
       for (let i = 0; i < data.petals; i++) {
         const petal = document.createElement("div");
         petal.className = "petal";
         petal.style.width = size * 0.6 + "px";
         petal.style.height = size * 0.6 + "px";
-        petal.style.background = data.color;
+        // Use petalColors[i] if available, else fallback to data.color
+        if (Array.isArray(data.petalColors) && data.petalColors[i]) {
+          petal.style.background = data.petalColors[i];
+        } else {
+          petal.style.background = data.color;
+        }
         petal.style.top = size * 0.2 + "px";
         petal.style.left = size * 0.2 + "px";
         petal.style.transform = `rotate(${i * (360 / data.petals)}deg) translate(0, -${size * 0.3}px)`;
@@ -144,6 +152,10 @@
       centerEl.style.height = centerSize + "px";
       centerEl.style.top = (size - centerSize)/2 + "px";
       centerEl.style.left = (size - centerSize)/2 + "px";
+      // Use stampColor if present, else default
+      if (typeof data.stampColor === "string" && data.stampColor) {
+        centerEl.style.background = data.stampColor;
+      }
       root.appendChild(centerEl);
 
       centerEl.addEventListener("click", async (ev) => {
@@ -159,25 +171,20 @@
           const el = playArea.querySelector(`.flower[data-id="${json.flowerId}"]`) || root;
           if (typeof json.fill === "number") {
             el.dataset.fill = json.fill;
+            updateFill(el);
           } else if (gained > 0) {
             el.dataset.fill = 0;
+            updateFill(el);
           }
-          updateFill(el);
 
           if (gained > 0) {
             userHoney += Math.round(gained * 10);
             honeyEl.textContent = userHoney;
-            
             // Play slurp sound when successfully draining honey
             playSound('slurp.mp3', 0.7); // 70% volume
           } else {
-            centerEl.classList.remove("no-honey");
-            void centerEl.offsetWidth;
-            centerEl.classList.add("no-honey");
-
-            // Play bump sound when clicking empty flower
+            // Play bump sound when clicking empty flower (harvest failed)
             playSound('bump.mp3', 0.6); // 60% volume
-
             if (navigator.vibrate) navigator.vibrate(15);
           }
         } catch (e) {

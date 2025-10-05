@@ -10,6 +10,8 @@ COPY sse-connection.js /app
 COPY styles.css /app
 COPY slurp.mp3 /app
 COPY bump.mp3 /app
+COPY grass.jpg /app
+COPY bee.png /app
 
 # Copy package.json app directory.
 COPY package.json /app
