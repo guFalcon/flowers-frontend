@@ -24,6 +24,7 @@
 
   <script src="sse-connection.js"></script>
   <script src="bee.js"></script>
+  <script src="audio-system.js"></script>
   <script>
     // ====== Backend URLs ======
     const SERVER = "https://flowers-backend.htl.dev";
@@ -41,8 +42,19 @@
     const qrModal = document.getElementById("qrModal");
     const isAdmin = new URLSearchParams(window.location.search).get("admin") === "true";
     let userHoney = 0;
-    let beeLoopAudio = null;
 
+    const audioSystem = new AudioSystem();
+    // Register sounds
+    audioSystem.register('bee', 'bee-loop.mp3', { loop: true, volume: 0.5 });
+    audioSystem.register('ambient', 'bees.mp3', { loop: true, volume: 0.3 });
+    audioSystem.register('slurp', 'slurp.mp3', { volume: 0.7 });
+    audioSystem.register('bump', 'bump.mp3', { volume: 0.6 });
+
+    // Overcome browser autoplay restrictions: play ambient sound on first user interaction
+    document.body.addEventListener('pointerdown', () => {
+      audioSystem.play('ambient');
+    }, { once: true });
+    
     // ====== Audio System ======
     const audioCache = {};
     
@@ -57,24 +69,6 @@
       }
       return audioCache[filename];
     }
-
-    function playSound(filename, volume = 1.0) {
-      try {
-        const audio = loadAudio(filename);
-        audio.volume = Math.max(0, Math.min(1, volume));
-        // Clone the audio to allow multiple simultaneous plays
-        const audioClone = audio.cloneNode();
-        audioClone.play().catch(e => {
-          console.warn(`Failed to play sound ${filename}:`, e);
-        });
-      } catch (e) {
-        console.warn(`Error playing sound ${filename}:`, e);
-      }
-    }
-
-    // Preload sounds
-    loadAudio('slurp.mp3');
-    loadAudio('bump.mp3');
 
     // ====== Layout helpers ======
     function resizePlayArea() {
@@ -178,8 +172,17 @@
         playArea.removeChild(child);
       });
       levelData.flowers.forEach(f => playArea.appendChild(createFlower(f)));
-      if (!bee) bee = new Bee(playArea);
+      if (!bee) bee = new Bee(playArea, audioSystem);
       bee.update();
+
+      if (bee.isFlying && bee.flightEndTime) {
+        const now = performance.now();
+        const remaining = bee.flightEndTime - now;
+        if (remaining > 0) {
+          bee.stopJitter();         // Stop any current jitter
+          bee.startJitter(remaining); // Restart jitter for the remaining time
+        }
+      }
     }
 
     // ====== Data I/O ======
@@ -261,22 +264,6 @@
       }
     }
 
-    function playBeeLoop() {
-      if (beeLoopAudio && !beeLoopAudio.paused) return; // Already playing
-      beeLoopAudio = new Audio('bee-loop.mp3');
-      beeLoopAudio.loop = true;
-      beeLoopAudio.volume = 0.5;
-      beeLoopAudio.play().catch(() => {});
-    }
-
-    function stopBeeLoop() {
-      if (beeLoopAudio) {
-        beeLoopAudio.pause();
-        beeLoopAudio.currentTime = 0;
-        beeLoopAudio = null;
-      }
-    }
-
     // Admin/QR mount, initial render
     mountAdminOrQrButton();
     init();
@@ -291,14 +278,10 @@
       bee.flightId++; // Increment for a new flight
       const thisFlight = bee.flightId;
 
-      playBeeLoop();
       bee.moveTo(relX, relY);
 
       // Wait for bee to "fly" there
       await new Promise(res => setTimeout(res, duration));
-
-      // Stop bee sound (regardless of harvest/divert)
-      stopBeeLoop();
 
       // Only harvest if this is still the latest flight
       if (thisFlight !== bee.flightId) return;
@@ -350,9 +333,9 @@
         if (gained > 0) {
           userHoney += Math.round(gained * 10);
           honeyEl.textContent = userHoney;
-          playSound('slurp.mp3', 0.7); // 70% volume
+          audioSystem.play('slurp');
         } else {
-          playSound('bump.mp3', 0.6); // 60% volume
+          audioSystem.play('bump');
           if (navigator.vibrate) navigator.vibrate(15);
         }
       } catch (e) {
@@ -387,6 +370,11 @@
       onConnectionChange: (status, message) => {
         connectionStatusEl.className = `connection-status ${status}`;
         connectionStatusEl.textContent = message;
+        if (status === "connected") {
+          audioSystem.play('ambient');
+        } else {
+          audioSystem.pause('ambient');
+        }
       },
       
       // Handle incoming messages

@@ -1,9 +1,12 @@
 class Bee {
   baseSpeed = 4.5; // seconds per unit distance
   flightId = 0;
+  isFlying = false;
+  flightEndTime = null;
 
-  constructor(playArea) {
+  constructor(playArea, audioSystem) {
     this.playArea = playArea;
+    this.audioSystem = audioSystem;
     this.beeRelX = 0.5;
     this.beeRelY = 0.5;
     this.jitterAmount = 0.025; // increased jitter
@@ -62,38 +65,81 @@ class Bee {
   }
 
   moveTo(relX, relY) {
-    const duration = this.getTravelDurationInMillis(relX, relY) / 1000;
-    // Set transition duration dynamically
-    this.wrapper.style.transition = 
-        `left ${duration}s linear, top ${duration}s linear, width 0.2s, height 0.2s, transform 0.12s`;
+    audioSystem.play('bee');
+    this.flightId = (this.flightId || 0) + 1;
+    const myFlight = this.flightId;
 
+    // Get actual current position from DOM (rendered position)
+    const areaW = this.playArea.clientWidth;
+    const areaH = this.playArea.clientHeight;
+    const rect = this.wrapper.getBoundingClientRect();
+    const areaRect = this.playArea.getBoundingClientRect();
+    const currentLeft = rect.left + rect.width / 2 - areaRect.left;
+    const currentTop = rect.top + rect.height / 2 - areaRect.top;
+    const currentRelX = currentLeft / areaW;
+    const currentRelY = currentTop / areaH;
+
+    // Compute duration from actual position
+    const dx = relX - currentRelX;
+    const dy = relY - currentRelY;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const minDuration = 0.2; // seconds
+    const duration = Math.max(dist * this.baseSpeed, minDuration);
+
+    // Set transition BEFORE updating position
+    this.wrapper.style.transition =
+      `left ${duration}s linear, top ${duration}s linear, width 0.2s, height 0.2s, transform 0.12s`;
+
+    // Now update target position
     this.beeRelX = relX;
     this.beeRelY = relY;
-    this.startJitter(duration * 1000);
+
+    this.isFlying = true;
+    this.flightEndTime = performance.now() + duration * 1000;
+    this.startJitter(duration * 1000, myFlight);
   }
 
-  setTint(color) {
-    this.wrapper.style.setProperty('--bee-tint', color);
-  }
-
-  startJitter(duration = 700) {
-    if (this.jitterActive) return;
+  startJitter(duration = 700, flightId = this.flightId) {
+    this.stopJitter();
     this.jitterActive = true;
     const start = performance.now();
     const animate = (now) => {
-      const elapsed = now - start;
-      if (elapsed > duration) {
+      // If a new flight started, stop this jitter
+      if (flightId !== this.flightId) {
         this.jitterActive = false;
         this.update(0, 0);
         return;
       }
-      // More frequent and larger jitter
+      const elapsed = now - start;
+      if (elapsed > duration) {
+        this.jitterActive = false;
+        this.update(0, 0);
+        this.isFlying = false;
+        this.flightEndTime = null;
+        if (typeof audioSystem !== "undefined") {
+          audioSystem.stop('bee');
+        }
+        return;
+      }
       const jitterX = (Math.random() - 0.5) * this.jitterAmount * 2;
       const jitterY = (Math.random() - 0.5) * this.jitterAmount * 2;
       this.update(jitterX, jitterY);
       this.jitterFrame = requestAnimationFrame(animate);
     };
     this.jitterFrame = requestAnimationFrame(animate);
+  }
+
+  stopJitter() {
+    this.jitterActive = false;
+    if (this.jitterFrame) {
+      cancelAnimationFrame(this.jitterFrame);
+      this.jitterFrame = null;
+    }
+    this.update(0, 0);
+  }
+
+  setTint(color) {
+    this.wrapper.style.setProperty('--bee-tint', color);
   }
 }
 

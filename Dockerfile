@@ -4,15 +4,19 @@ FROM node:22.14-alpine
 RUN mkdir /app
 
 # Copy whole code to app directory.
-COPY index.html /app
-COPY qr.png /app
-COPY sse-connection.js /app
+COPY app.js /app
+COPY audio-system.js /app
+COPY bee-loop.mp3 /app
 COPY bee.js /app
-COPY styles.css /app
-COPY slurp.mp3 /app
+COPY bee.png /app
+COPY bees.mp3 /app
 COPY bump.mp3 /app
 COPY grass.jpg /app
-COPY bee.png /app
+COPY index.html /app
+COPY qr.png /app
+COPY slurp.mp3 /app
+COPY sse-connection.js /app
+COPY styles.css /app
 
 # Copy package.json app directory.
 COPY package.json /app
