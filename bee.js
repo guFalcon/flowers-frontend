@@ -1,3 +1,6 @@
+// ======================
+// Multi-instance Bee.js
+// ======================
 class Bee {
   beeRelX = 0.5;
   beeRelY = 0.5;
@@ -9,69 +12,78 @@ class Bee {
   jitterActive = false;
   jitterFrame = null;
 
-  constructor(playArea, audioSystem) {
+  constructor(playArea, audioSystem, id = null) {
     this.playArea = playArea;
     this.audioSystem = audioSystem;
+    this.id = id || crypto.randomUUID();
     this.createElements();
     this.update();
   }
 
+  // Create wrapper + bee image — unique per instance
   createElements() {
-    this.wrapper = document.getElementById('beeTintWrapper');
-    if (!this.wrapper) {
-      this.wrapper = document.createElement('div');
-      this.wrapper.id = 'beeTintWrapper';
-      this.wrapper.style.position = 'absolute';
-      this.wrapper.style.pointerEvents = 'none';
-      this.wrapper.style.zIndex = 5000;
+    // --- wrapper ---
+    this.wrapper = document.createElement("div");
+    this.wrapper.className = "bee-tint-wrapper";
+    this.wrapper.dataset.beeId = this.id;
+    this.wrapper.style.position = "absolute";
+    this.wrapper.style.pointerEvents = "none";
+    this.wrapper.style.zIndex = 5000;
+
+    // --- bee image ---
+    this.bee = document.createElement("div");
+    this.bee.className = "bee";
+    this.bee.style.width = "100%";
+    this.bee.style.height = "100%";
+    this.bee.style.background = "url('bee.png') center/contain no-repeat";
+    this.bee.style.position = "absolute";
+    this.bee.style.left = 0;
+    this.bee.style.top = 0;
+    this.bee.style.pointerEvents = "none";
+
+    this.wrapper.appendChild(this.bee);
+
+    if (!this.wrapper.classList.contains("bee-tint")) {
+      this.wrapper.classList.add("bee-tint");
     }
-    this.bee = this.wrapper.querySelector('#bee');
-    if (!this.bee) {
-      this.bee = document.createElement('div');
-      this.bee.id = 'bee';
-      this.bee.style.width = '100%';
-      this.bee.style.height = '100%';
-      this.bee.style.background = "url('bee.png') center/contain no-repeat";
-      this.bee.style.position = 'absolute';
-      this.bee.style.left = 0;
-      this.bee.style.top = 0;
-      this.bee.style.pointerEvents = 'none';
-      this.wrapper.appendChild(this.bee);
-    }
-    if (!this.wrapper.classList.contains('bee-tint')) {
-      this.wrapper.classList.add('bee-tint');
-    }
-    if (!this.playArea.contains(this.wrapper)) {
-      this.playArea.appendChild(this.wrapper);
-    }
+
+    this.playArea.appendChild(this.wrapper);
   }
 
+  // Update DOM position and jitter offset
   update(jitterX = 0, jitterY = 0) {
     const areaW = this.playArea.clientWidth;
     const areaH = this.playArea.clientHeight;
     const beeSize = areaH * 0.07;
     this.wrapper.style.width = beeSize + "px";
     this.wrapper.style.height = beeSize + "px";
-    this.wrapper.style.left = (this.beeRelX * areaW - beeSize/2) + "px";
-    this.wrapper.style.top = (this.beeRelY * areaH - beeSize/2) + "px";
+    this.wrapper.style.left = this.beeRelX * areaW - beeSize / 2 + "px";
+    this.wrapper.style.top = this.beeRelY * areaH - beeSize / 2 + "px";
     this.wrapper.style.transform = `translate(${jitterX * areaW}px, ${jitterY * areaH}px)`;
   }
 
+  // Calculate travel duration in milliseconds
   getTravelDurationInMillis(fromRelX, fromRelY, toRelX, toRelY) {
     const dx = toRelX - fromRelX;
     const dy = toRelY - fromRelY;
-    const dist = Math.sqrt(dx*dx + dy*dy);
+    const dist = Math.sqrt(dx * dx + dy * dy);
     const minDuration = 0.2; // seconds
     const duration = Math.max(dist * this.baseSpeed, minDuration) * 1000;
     return duration;
   }
 
-  moveTo(relX, relY) {
-    this.audioSystem.play('bee');
+  incrementFlightId() {
     this.flightId = (this.flightId || 0) + 1;
+    return this.flightId;
+  }
+
+  // Smoothly move the bee to new relative coords
+  moveTo(relX, relY) {
+    this.audioSystem.play("bee");
+
     const myFlight = this.flightId;
 
-    // Get actual current position from DOM (rendered position)
+    // Get actual current position from DOM
     const areaW = this.playArea.clientWidth;
     const areaH = this.playArea.clientHeight;
     const rect = this.wrapper.getBoundingClientRect();
@@ -81,14 +93,19 @@ class Bee {
     const currentRelX = currentLeft / areaW;
     const currentRelY = currentTop / areaH;
 
-    // Compute duration from actual position
-    const duration = this.getTravelDurationInMillis(currentRelX, currentRelY, relX, relY);
+    const duration = this.getTravelDurationInMillis(
+      currentRelX,
+      currentRelY,
+      relX,
+      relY
+    );
 
-    // Set transition BEFORE updating position
-    this.wrapper.style.transition =
-      `left ${duration / 1000.0}s linear, top ${duration / 1000.0}s linear, width 0.2s, height 0.2s, transform 0.12s`;
+    // Apply transition BEFORE updating target
+    this.wrapper.style.transition = `left ${
+      duration / 1000
+    }s linear, top ${duration / 1000}s linear, width 0.2s, height 0.2s, transform 0.12s`;
 
-    // Now update target position
+    // Update target position
     this.beeRelX = relX;
     this.beeRelY = relY;
 
@@ -99,33 +116,36 @@ class Bee {
     return duration;
   }
 
+  // Small random wiggle while flying
   startJitter(duration = 700, flightId = this.flightId) {
     this.stopJitter();
     this.jitterActive = true;
     const start = performance.now();
+
     const animate = (now) => {
-      // If a new flight started, stop this jitter
+      // Stop if another flight started
       if (flightId !== this.flightId) {
         this.jitterActive = false;
         this.update(0, 0);
         return;
       }
+
       const elapsed = now - start;
       if (elapsed > duration) {
         this.jitterActive = false;
         this.update(0, 0);
         this.isFlying = false;
         this.flightEndTime = null;
-        if (typeof audioSystem !== "undefined") {
-          this.audioSystem.stop('bee');
-        }
+        this.audioSystem.stop("bee");
         return;
       }
+
       const jitterX = (Math.random() - 0.5) * this.jitterAmount * 2;
       const jitterY = (Math.random() - 0.5) * this.jitterAmount * 2;
       this.update(jitterX, jitterY);
       this.jitterFrame = requestAnimationFrame(animate);
     };
+
     this.jitterFrame = requestAnimationFrame(animate);
   }
 
@@ -139,8 +159,16 @@ class Bee {
   }
 
   setTint(color) {
-    this.wrapper.style.setProperty('--bee-tint', color);
+    this.wrapper.style.setProperty("--bee-tint", color);
+  }
+
+  destroy() {
+    this.stopJitter();
+    if (this.wrapper && this.wrapper.parentNode) {
+      this.wrapper.remove();
+    }
   }
 }
 
+// Expose globally
 window.Bee = Bee;

@@ -48,6 +48,13 @@ class AudioSystem {
     }
   }
 
+  pauseAll() {
+    for (const name in this.sounds) {
+      this.pause(name);
+    }
+  }
+
+
   /**
    * Stop a looping sound and rewind.
    */
