@@ -28,6 +28,9 @@
   <script src="audio-system.js"></script>
   <script>
     console.log("App started");
+    const PLAYER_ID = localStorage.getItem("playerId") || crypto.randomUUID();
+    localStorage.setItem("playerId", PLAYER_ID);
+
 
     // ====== Backend URLs ======
     //const SERVER = "http://localhost:8084";
@@ -213,7 +216,9 @@
 
     // ====== Data I/O ======
     async function fetchLevel() {
-      const res = await fetch(LEVEL_URL);
+      const res = await fetch(LEVEL_URL, {
+        headers: { "X-Player-ID": PLAYER_ID }
+      });
       if (!res.ok) throw new Error("Failed to load level");
       levelData = await res.json();
       if (levelData?.yourBeeId) yourBeeId = levelData.yourBeeId;
