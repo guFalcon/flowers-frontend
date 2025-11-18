@@ -216,9 +216,7 @@
 
     // ====== Data I/O ======
     async function fetchLevel() {
-      const res = await fetch(LEVEL_URL, {
-        headers: { "X-Player-ID": PLAYER_ID }
-      });
+      const res = await fetch(`${LEVEL_URL}/${PLAYER_ID}`);
       if (!res.ok) throw new Error("Failed to load level");
       levelData = await res.json();
       if (levelData?.yourBeeId) yourBeeId = levelData.yourBeeId;
