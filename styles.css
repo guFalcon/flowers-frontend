@@ -70,7 +70,7 @@ h1 {
     var(--bee-tint, rgba(255, 242, 174, 0.9)) 0%,
     transparent 70%
   );
-  opacity: 0.6;
+  opacity: 0.2;
   border-radius: 50%;
   filter: blur(10px);
   z-index: 0;
@@ -83,10 +83,10 @@ h1 {
   position: absolute;
   inset: 0;
   background: var(--bee-tint, #fff2ae);
-  opacity: 0.7;
+  opacity: 0.6;
   pointer-events: none;
   z-index: 2;
-  mix-blend-mode: multiply;
+  mix-blend-mode: additive;
   mask-image: url('bee.png');
   mask-size: contain;
   mask-repeat: no-repeat;
@@ -98,7 +98,7 @@ h1 {
 }
 /* Other players' bees: half opacity, no glow */
 .bee-tint-wrapper.is-other {
-  opacity: 0.5;
+  opacity: 0.6;
 }
 
 .bee-tint-wrapper.is-other::before {
