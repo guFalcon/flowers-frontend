@@ -227,11 +227,17 @@
       qrModal.classList.add("open");
       qrModal.setAttribute("aria-hidden", "false");
       document.addEventListener("keydown", escClose);
+      document.querySelectorAll("[data-close-modal]").forEach(el => {
+        el.addEventListener("click", closeQrModal);
+      });
     }
     function closeQrModal() {
       qrModal.classList.remove("open");
       qrModal.setAttribute("aria-hidden", "true");
       document.removeEventListener("keydown", escClose);
+      document.querySelectorAll("[data-close-modal]").forEach(el => {
+        el.addEventListener("click", closeQrModal);
+      });
     }
     function escClose(e) { if (e.key === "Escape") closeQrModal(); }
 
