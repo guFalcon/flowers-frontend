@@ -8,6 +8,7 @@ services:
       - INTERNAL_PORT=8080
     labels:
       - traefik.enable=true
+      - traefik.http.routers.flowers-frontend.entrypoints=web,websecure,web-ext,websecure-ext
       - traefik.http.routers.flowers-frontend.rule=Host(`flowers.htl.dev`)
       - traefik.http.services.flowers-frontend.loadbalancer.server.port=8080
 
