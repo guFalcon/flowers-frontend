@@ -31,7 +31,7 @@ everyone. There is no protection — anyone who knows the URL parameter is admin
 
 ## Local development
 
-Requirements: Node 20 (see `.nvmrc`).
+Requirements: Node 24 (see `.nvmrc`).
 
 ```shell
 npm ci

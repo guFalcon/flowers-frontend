@@ -1,6 +1,6 @@
 services:
 
-  test:
+  frontend:
     image: gufalcon/flowers-frontend:latest
     container_name: flowers-frontend
     restart: unless-stopped
