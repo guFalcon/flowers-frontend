@@ -15,6 +15,8 @@ export function renderBees(bees = []) {
     if (!bee) {
       bee = new Bee(playArea, audioSystem, b.id);
       bee.setTint(b.color);
+      // A bee shows up where the server says it is; the target check below then lets it fly on
+      if (typeof b.x === "number" && typeof b.y === "number") bee.placeAt(b.x, b.y);
       beeInstances.set(b.id, bee);
     }
 

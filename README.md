@@ -4,7 +4,7 @@ Browser client of **flowers**, a small multiplayer browser game used for teachin
 player steers a bee across a meadow and harvests honey from flowers. All players share one level
 that is kept by the backend and pushed to every browser via Server-Sent Events (SSE).
 
-- Play: <https://flowers.htl.dev> — admin view: <https://flowers.htl.dev/?admin=true>
+- Play: <https://flowers.htl.dev> — admin view: `https://flowers.htl.dev/?admin=<admin token>`
 - Backend: [guFalcon/flowers-backend](https://github.com/guFalcon/flowers-backend)
   (live at <https://flowers-backend.htl.dev>)
 
@@ -19,15 +19,18 @@ the static files.
   players' bees are semi-transparent.
 - Click or tap anywhere on the meadow — your bee flies there.
 - Land on the centre of a flower to harvest its nectar. The orange ring around a flower's centre grows
-  as the flower fills up; a full flower gives the most honey, an (almost) empty one gives nothing and you hear a bump.
-- Your honey total is shown below the meadow. It is kept in the browser only and starts at 0 on
-  every reload.
+  as the flower fills up; a full flower gives the most honey, an (almost) empty one or the bare
+  meadow gives nothing and you hear a bump. The backend decides, from where your bee really is.
+- Your honey total is shown below the meadow. The backend keeps it, so it survives a reload; an
+  admin restart sets everyone back to 0.
 - "📷 Show QR" shows a QR code so others can join.
 - Sound starts after the first click (browsers block audio before a user gesture).
 
-**Admin mode** (`?admin=true`) replaces the QR button with a panel that shows the QR code
+**Admin mode** (`?admin=<admin token>`) replaces the QR button with a panel that shows the QR code
 permanently and has a **Restart Level** button, which makes the backend generate new flowers for
-everyone. There is no protection — anyone who knows the URL parameter is admin.
+everyone. The value of `admin` is sent as the header `X-Admin-Token`; the backend accepts it only if
+it equals its `FLOWERS_ADMIN_TOKEN` (locally in `quarkus:dev`: `dev-admin-token`), otherwise the
+panel shows "Admin token rejected".
 
 ## Local development
 
@@ -61,16 +64,17 @@ how to run it.
 | `index.html` | Page markup; loads `main.js` as the only script |
 | `main.js` | Entry module: wires the modules together and starts the game (SSE, admin/QR button, level, click handler, resize, fill growth) |
 | `config.js` | Backend base URL (`SERVER`), API URLs, player id from `localStorage` |
-| `state.js` | Shared mutable state: level data, own bee id, honey total |
+| `state.js` | Shared mutable state: level data, own bee id |
 | `layout.js` | Play-area element and resizing to the 9:16 aspect ratio |
 | `audio.js` | The `AudioSystem` instance, sound registration, pause/resume on focus and visibility changes |
 | `flowers.js` | Flower rendering, fill display, harvest flash, passive fill growth (2 s interval) |
 | `bees.js` | Bee rendering: one `Bee` per backend bee, own vs. other bees, removal of vanished bees |
 | `level.js` | Loads the level (`GET /api/level/{playerId}`) and applies levels pushed via SSE |
 | `events.js` | SSE connection and dispatch of `levelRestarted`, `harvest` and `level-update` events, connection status |
-| `harvest.js` | Click → fly → harvest, honey counter |
-| `admin.js` | QR modal and admin panel (restart button) |
-| `bee.js` | `Bee` class: one DOM element per bee, flight animation (duration from distance), jitter while flying, tint colour |
+| `harvest.js` | Click → fly → harvest request, slurp/bump feedback |
+| `honey.js` | Honey display: the own bee's honey from the level or the latest harvest response |
+| `admin.js` | QR modal and admin panel (restart button with admin token) |
+| `bee.js` | `Bee` class: one DOM element per bee, placement without animation, flight animation (duration from distance), jitter while flying, tint colour |
 | `sse-connection.js` | `SSEConnectionManager`: `EventSource` wrapper with connection status, exponential back-off reconnect (max. 10 attempts) and reconnect when the tab becomes visible again |
 | `audio-system.js` | `AudioSystem`: registers and plays the looping and one-shot sounds |
 | `styles.css` | Layout, flowers, bees, admin panel, QR modal |
@@ -83,11 +87,14 @@ how to run it.
 The player id is a UUID stored in `localStorage` (`playerId`), so a reload keeps the same bee.
 
 1. On start the page opens the SSE stream `GET /api/events` and loads the level with
-   `GET /api/level/{playerId}`, which also tells it which bee is its own (`yourBeeId`).
+   `GET /api/level/{playerId}`, which also tells it which bee is its own (`yourBeeId`). Bees appear
+   at their current position from the level and fly on if they have a different target; the own
+   bee's `honey` is shown as the total.
 2. A click animates the own bee immediately and sends `POST /api/player/{playerId}/target`
    with `{x, y}` relative to the play area.
-3. When the flight time is over and the target lies on a flower centre, the page sends
-   `POST /api/harvest/{flowerId}` and adds the returned honey to the total.
+3. When the flight time is over (and no newer flight started), the page sends
+   `POST /api/player/{playerId}/harvest`. The backend harvests the flower under the bee; if
+   `gained > 0` the page plays the slurp and shows `total`, otherwise it plays the bump.
 4. SSE `level-update` events redraw flowers and move the other bees, `harvest` empties a flower,
    `levelRestarted` reloads the level.
 

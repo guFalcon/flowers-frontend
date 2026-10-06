@@ -309,6 +309,15 @@ h1 {
   background: #ffa500;
 }
 
+.admin-error {
+  color: #b00020;
+  font-weight: 700;
+}
+
+.admin-error[hidden] {
+  display: none;
+}
+
 .admin-qr {
   display: block;
   max-width: clamp(120px, 22vw, 360px);

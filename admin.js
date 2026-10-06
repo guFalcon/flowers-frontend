@@ -1,7 +1,9 @@
 import { ADMIN_RESTART_URL } from "./config.js";
 
 const qrModal = document.getElementById("qrModal");
-const isAdmin = new URLSearchParams(window.location.search).get("admin") === "true";
+// Admin mode: the page is opened with ?admin=<token>; the token goes along with every admin request
+const adminToken = new URLSearchParams(window.location.search).get("admin") || "";
+const isAdmin = adminToken !== "";
 
 // ====== Admin/QR ======
 function openQrModal() {
@@ -33,12 +35,19 @@ export function mountAdminOrQrButton({ onRestart }) {
       <div class="admin-row">
         <button id="restartBtn">Restart Level</button>
       </div>
+      <div class="admin-row admin-error" id="adminError" hidden>Admin token rejected</div>
       <div class="admin-row">QR (join):</div>
       <img src="qr.png" alt="Join QR code" class="admin-qr" />
     `;
     document.body.appendChild(panel);
     document.getElementById("restartBtn").addEventListener("click", async () => {
-      await fetch(ADMIN_RESTART_URL, { method: "POST" });
+      const errorEl = document.getElementById("adminError");
+      const res = await fetch(ADMIN_RESTART_URL, {
+        method: "POST",
+        headers: { "X-Admin-Token": adminToken }
+      });
+      errorEl.hidden = res.status !== 403;
+      if (res.status === 403) return;
       await onRestart();
     });
   } else {

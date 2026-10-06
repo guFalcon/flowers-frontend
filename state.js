@@ -3,5 +3,4 @@
 export const state = {
   levelData: undefined,
   yourBeeId: null,
-  userHoney: 0,
 };

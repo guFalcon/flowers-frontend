@@ -62,6 +62,14 @@ export class Bee {
     this.wrapper.style.transform = `translate(${jitterX * areaW}px, ${jitterY * areaH}px)`;
   }
 
+  // Put the bee at relative coords at once: no flight animation, no sound
+  placeAt(relX, relY) {
+    this.wrapper.style.transition = "none";
+    this.beeRelX = relX;
+    this.beeRelY = relY;
+    this.update(0, 0);
+  }
+
   // Calculate travel duration in milliseconds
   getTravelDurationInMillis(fromRelX, fromRelY, toRelX, toRelY) {
     const dx = toRelX - fromRelX;
