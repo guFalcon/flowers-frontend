@@ -3,6 +3,11 @@ import { state } from "./state.js";
 const TOP_COUNT = 5;
 const leaderboardEl = document.getElementById("leaderboard");
 
+// Honey comes in microlitres from the server, shown in millilitres
+function formatHoney(microlitres) {
+  return `${((microlitres ?? 0) / 1000).toFixed(2)} ml`;
+}
+
 // Honey descending, ties by name
 function rank(bees) {
   return [...bees].sort((a, b) =>
@@ -29,7 +34,7 @@ function buildRow(bee, position) {
 
   const honey = document.createElement("span");
   honey.className = "honey";
-  honey.textContent = bee.honey ?? 0;
+  honey.textContent = formatHoney(bee.honey);
 
   row.append(rankEl, dot, name, honey);
   return row;

@@ -22,8 +22,9 @@ the static files.
   as the flower fills up; a full flower gives the most honey. An (almost) empty flower gives nothing
   and you hear a bump — usually someone else got there first. Landing on the bare meadow gives
   nothing and stays silent. The backend decides, from where your bee really is.
-- Your honey total is shown below the meadow. The backend keeps it, so it survives a reload; an
-  admin restart sets everyone back to 0.
+- The leaderboard in the top-right corner shows the top 5 bees by honey (in ml) and highlights your
+  own bee. The backend keeps the honey, so it survives a reload; an admin restart sets everyone back
+  to 0.
 - "📷 Show QR" shows a QR code so others can join.
 - Sound starts after the first click (browsers block audio before a user gesture).
 
@@ -73,7 +74,7 @@ how to run it.
 | `level.js` | Loads the level (`GET /api/level/{playerId}`) and applies levels pushed via SSE |
 | `events.js` | SSE connection and dispatch of `levelRestarted`, `harvest` and `level-update` events, connection status |
 | `harvest.js` | Click → fly → harvest request, slurp/bump feedback |
-| `honey.js` | Honey display: the own bee's honey from the level or the latest harvest response |
+| `leaderboard.js` | Leaderboard panel: top 5 bees by honey (µl from the server, shown in ml) plus the own bee, updated by levels and `harvest` events |
 | `admin.js` | QR modal and admin panel (restart button with admin token) |
 | `bee.js` | `Bee` class: one DOM element per bee, placement without animation, flight animation (duration from distance), jitter while flying, tint colour |
 | `sse-connection.js` | `SSEConnectionManager`: `EventSource` wrapper with connection status, exponential back-off reconnect (max. 10 attempts) and reconnect when the tab becomes visible again |
@@ -89,13 +90,13 @@ The player id is a UUID stored in `localStorage` (`playerId`), so a reload keeps
 
 1. On start the page opens the SSE stream `GET /api/events` and loads the level with
    `GET /api/level/{playerId}`, which also tells it which bee is its own (`yourBeeId`). Bees appear
-   at their current position from the level and fly on if they have a different target; the own
-   bee's `honey` is shown as the total.
+   at their current position from the level and fly on if they have a different target; the
+   leaderboard is built from the bees' `honey` (integer microlitres).
 2. A click animates the own bee immediately and sends `POST /api/player/{playerId}/target`
    with `{x, y}` relative to the play area.
 3. When the flight time is over (and no newer flight started), the page sends
    `POST /api/player/{playerId}/harvest`. The backend harvests the flower under the bee; if
-   `gained > 0` the page plays the slurp and shows `total`; if the bee is on a flower that yields
+   `gained > 0` the page plays the slurp (the leaderboard follows via the `harvest` event); if the bee is on a flower that yields
    nothing (`flowerId` set, `gained` 0) it plays the bump; off every flower (`flowerId` null) or on
    a failed request it stays silent.
 4. SSE `level-update` events redraw flowers and move the other bees, `harvest` empties a flower,

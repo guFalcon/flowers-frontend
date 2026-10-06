@@ -3,7 +3,6 @@ import { state } from "./state.js";
 import { playArea } from "./layout.js";
 import { beeInstances } from "./bees.js";
 import { audioSystem } from "./audio.js";
-import { showHoney } from "./honey.js";
 
 // Click → fly the own bee there → ask the server to harvest under the bee on arrival
 export function enableHarvestOnClick() {
@@ -49,7 +48,6 @@ async function harvest() {
     const json = await res.json(); // { flowerId, gained, total }
 
     if (json.gained > 0) {
-      showHoney(json.total);
       audioSystem.play('slurp');
     } else if (json.flowerId != null) {
       // On a flower that yields nothing; the bare meadow (flowerId null) stays silent
