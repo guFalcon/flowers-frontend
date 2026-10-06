@@ -49,11 +49,11 @@ h1 {
    CLOUDS
    ================================ */
 
-/* Above flowers and bees, clipped to the play area, never catching clicks */
+/* Above flowers and bees, never catching clicks; not clipped to the play area, so clouds beside it stay
+   visible (the window clips them via body's overflow: hidden) */
 .cloud-layer {
   position: absolute;
   inset: 0;
-  overflow: hidden;
   pointer-events: none;
   z-index: 6000;
 }

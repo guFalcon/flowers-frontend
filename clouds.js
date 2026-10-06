@@ -7,6 +7,10 @@ import { serverNow } from "./clock.js";
 
 // Play-area width per height (aspect 9:16), converts horizontal distances to heights
 const WIDTH_PER_HEIGHT = 9 / 16;
+// Horizontal extent of the sky in play-area widths (one width beside the play area on each side);
+// same values as SKY_MIN_X/SKY_MAX_X in Weather.java
+const SKY_MIN_X = -1;
+const SKY_MAX_X = 2;
 
 let clouds = [];
 let wind = [];
@@ -14,15 +18,15 @@ let layer = null;
 const cloudEls = new Map();
 let frame = null;
 
-// A cloud that has completely left the range [0, 1] re-enters on the opposite side
-function wrap(p, radius) {
-  const min = -radius;
-  const span = 1 + 2 * radius;
-  return ((p - min) % span + span) % span + min;
+// A cloud that has completely left the range [min, max] re-enters on the opposite side
+function wrap(p, min, max, radius) {
+  const start = min - radius;
+  const span = max - min + 2 * radius;
+  return ((p - start) % span + span) % span + start;
 }
 
 // Position of the cloud at server time t: its anchor (x, y at cloud.t) moved piece by piece along the
-// wind schedule, then wrapped around the play area. x in widths, y in heights.
+// wind schedule, then wrapped around the sky. x in widths, y in heights.
 export function cloudPositionAt(cloud, wind, t) {
   const from = Math.min(cloud.t, t);
   const to = Math.max(cloud.t, t);
@@ -42,8 +46,8 @@ export function cloudPositionAt(cloud, wind, t) {
   const sign = t >= cloud.t ? 1 : -1;
   const radius = cloud.size / 2;
   return {
-    x: wrap(cloud.x + sign * dx / WIDTH_PER_HEIGHT, radius / WIDTH_PER_HEIGHT),
-    y: wrap(cloud.y + sign * dy, radius),
+    x: wrap(cloud.x + sign * dx / WIDTH_PER_HEIGHT, SKY_MIN_X, SKY_MAX_X, radius / WIDTH_PER_HEIGHT),
+    y: wrap(cloud.y + sign * dy, 0, 1, radius),
   };
 }
 
