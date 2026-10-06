@@ -236,7 +236,7 @@
       qrModal.setAttribute("aria-hidden", "true");
       document.removeEventListener("keydown", escClose);
       document.querySelectorAll("[data-close-modal]").forEach(el => {
-        el.addEventListener("click", closeQrModal);
+        el.removeEventListener("click", closeQrModal);
       });
     }
     function escClose(e) { if (e.key === "Escape") closeQrModal(); }
@@ -292,8 +292,7 @@
         if (data.type === "levelRestarted") {
           await init();
         } else if (data.type === "harvest") {
-          const id = data.flowerId || data.id;
-          const flowerEl = playArea.querySelector(`.flower[data-id="${id}"]`);
+          const flowerEl = playArea.querySelector(`.flower[data-id="${data.flowerId}"]`);
           if (!flowerEl) return;
           flowerEl.dataset.fill = typeof data.fill === "number" ? data.fill : 0;
           updateFill(flowerEl);
