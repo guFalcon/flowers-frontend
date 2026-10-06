@@ -45,12 +45,14 @@ export function enableHarvestOnClick() {
 async function harvest() {
   try {
     const res = await fetch(HARVEST_URL(state.yourBeeId), { method: "POST" });
-    const json = res.ok ? await res.json() : null; // { flowerId, gained, total }
+    if (!res.ok) return;
+    const json = await res.json(); // { flowerId, gained, total }
 
-    if (json?.gained > 0) {
+    if (json.gained > 0) {
       showHoney(json.total);
       audioSystem.play('slurp');
-    } else {
+    } else if (json.flowerId != null) {
+      // On a flower that yields nothing; the bare meadow (flowerId null) stays silent
       audioSystem.play('bump');
       if (navigator.vibrate) navigator.vibrate(15);
     }

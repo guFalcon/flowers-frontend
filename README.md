@@ -19,8 +19,9 @@ the static files.
   players' bees are semi-transparent.
 - Click or tap anywhere on the meadow — your bee flies there.
 - Land on the centre of a flower to harvest its nectar. The orange ring around a flower's centre grows
-  as the flower fills up; a full flower gives the most honey, an (almost) empty one or the bare
-  meadow gives nothing and you hear a bump. The backend decides, from where your bee really is.
+  as the flower fills up; a full flower gives the most honey. An (almost) empty flower gives nothing
+  and you hear a bump — usually someone else got there first. Landing on the bare meadow gives
+  nothing and stays silent. The backend decides, from where your bee really is.
 - Your honey total is shown below the meadow. The backend keeps it, so it survives a reload; an
   admin restart sets everyone back to 0.
 - "📷 Show QR" shows a QR code so others can join.
@@ -94,7 +95,9 @@ The player id is a UUID stored in `localStorage` (`playerId`), so a reload keeps
    with `{x, y}` relative to the play area.
 3. When the flight time is over (and no newer flight started), the page sends
    `POST /api/player/{playerId}/harvest`. The backend harvests the flower under the bee; if
-   `gained > 0` the page plays the slurp and shows `total`, otherwise it plays the bump.
+   `gained > 0` the page plays the slurp and shows `total`; if the bee is on a flower that yields
+   nothing (`flowerId` set, `gained` 0) it plays the bump; off every flower (`flowerId` null) or on
+   a failed request it stays silent.
 4. SSE `level-update` events redraw flowers and move the other bees, `harvest` empties a flower,
    `levelRestarted` reloads the level.
 
