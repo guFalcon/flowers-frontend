@@ -1,7 +1,7 @@
 // ======================
 // Multi-instance Bee.js
 // ======================
-class Bee {
+export class Bee {
   beeRelX = 0.5;
   beeRelY = 0.5;
   jitterAmount = 0.025;
@@ -169,6 +169,3 @@ class Bee {
     }
   }
 }
-
-// Expose globally
-window.Bee = Bee;

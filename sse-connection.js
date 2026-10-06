@@ -2,7 +2,7 @@
  * SSE Connection Manager with automatic reconnection
  * Handles Server-Sent Events with robust error handling and reconnection logic
  */
-class SSEConnectionManager {
+export class SSEConnectionManager {
   constructor(url, options = {}) {
     this.url = url;
     this.eventSource = null;
@@ -187,11 +187,4 @@ class SSEConnectionManager {
     this.disconnect(false);
     this.connect();
   }
-}
-
-// Export for use in other files
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = SSEConnectionManager;
-} else if (typeof window !== 'undefined') {
-  window.SSEConnectionManager = SSEConnectionManager;
 }

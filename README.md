@@ -38,14 +38,16 @@ npm ci
 npm start          # nodemon, restarts on changes to .js files
 ```
 
-The game is served at <http://localhost:8081> (override the port with `INTERNAL_PORT`).
+The game is served at <http://localhost:8081> (override the port with `INTERNAL_PORT`). The scripts
+are native ES modules, so the page must be served over HTTP — opening `index.html` directly
+(`file://`) does not work.
 
 By default the page talks to the **live backend**. To use a backend running locally on port 8084,
-switch the `SERVER` constant near the top of the script in `index.html`:
+switch the `SERVER` constant in `config.js`:
 
 ```js
-const SERVER = "http://localhost:8084";
-//const SERVER = "https://flowers-backend.htl.dev";
+export const SERVER = "http://localhost:8084";
+//export const SERVER = "https://flowers-backend.htl.dev";
 ```
 
 Don't commit that switch — a push to `main` deploys the file as it is. The backend allows the
@@ -56,7 +58,18 @@ how to run it.
 
 | File | Role |
 |---|---|
-| `index.html` | Page markup and the main script: backend URLs, player id, level and flower rendering, bee rendering, SSE event handling, click → fly → harvest, admin panel / QR modal |
+| `index.html` | Page markup; loads `main.js` as the only script |
+| `main.js` | Entry module: wires the modules together and starts the game (SSE, admin/QR button, level, click handler, resize, fill growth) |
+| `config.js` | Backend base URL (`SERVER`), API URLs, player id from `localStorage` |
+| `state.js` | Shared mutable state: level data, own bee id, honey total |
+| `layout.js` | Play-area element and resizing to the 9:16 aspect ratio |
+| `audio.js` | The `AudioSystem` instance, sound registration, pause/resume on focus and visibility changes |
+| `flowers.js` | Flower rendering, fill display, harvest flash, passive fill growth (2 s interval) |
+| `bees.js` | Bee rendering: one `Bee` per backend bee, own vs. other bees, removal of vanished bees |
+| `level.js` | Loads the level (`GET /api/level/{playerId}`) and applies levels pushed via SSE |
+| `events.js` | SSE connection and dispatch of `levelRestarted`, `harvest` and `level-update` events, connection status |
+| `harvest.js` | Click → fly → harvest, honey counter |
+| `admin.js` | QR modal and admin panel (restart button) |
 | `bee.js` | `Bee` class: one DOM element per bee, flight animation (duration from distance), jitter while flying, tint colour |
 | `sse-connection.js` | `SSEConnectionManager`: `EventSource` wrapper with connection status, exponential back-off reconnect (max. 10 attempts) and reconnect when the tab becomes visible again |
 | `audio-system.js` | `AudioSystem`: registers and plays the looping and one-shot sounds |

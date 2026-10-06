@@ -1,4 +1,4 @@
-class AudioSystem {
+export class AudioSystem {
   constructor() {
     this.sounds = {}; // { handle: { audio: Audio, loop: bool } }
   }
@@ -76,6 +76,3 @@ class AudioSystem {
     }
   }
 }
-
-// Make available globally
-window.AudioSystem = AudioSystem;
