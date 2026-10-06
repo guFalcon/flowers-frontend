@@ -3,6 +3,7 @@ import { EVENTS_URL } from "./config.js";
 import { audioSystem } from "./audio.js";
 import { init, applyLevel } from "./level.js";
 import { showHarvest } from "./flowers.js";
+import { applyHarvestToLeaderboard } from "./leaderboard.js";
 
 const connectionStatusEl = document.getElementById("connectionStatus");
 
@@ -21,6 +22,7 @@ export function connectEvents() {
         await init();
       } else if (data.type === "harvest") {
         showHarvest(data);
+        applyHarvestToLeaderboard(data);
       } else if (data.type === "level-update") {
         applyLevel(data.level);
       }

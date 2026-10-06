@@ -3,7 +3,8 @@ import { state } from "./state.js";
 import { resizePlayArea } from "./layout.js";
 import { buildLevel } from "./flowers.js";
 import { renderBees } from "./bees.js";
-import { showOwnHoney } from "./honey.js";
+import { showOwnHoney, showOwnName } from "./honey.js";
+import { renderLeaderboard } from "./leaderboard.js";
 
 // ====== Data I/O ======
 async function fetchLevel() {
@@ -21,6 +22,8 @@ export async function init() {
     buildLevel();
     renderBees(state.levelData?.bees || []);
     showOwnHoney(state.levelData);
+    showOwnName(state.levelData);
+    renderLeaderboard(state.levelData?.bees || []);
   } catch (e) { console.error("Error fetching level", e); }
 }
 
@@ -31,4 +34,6 @@ export function applyLevel(level) {
   buildLevel();
   renderBees(state.levelData.bees || []);
   showOwnHoney(state.levelData);
+  showOwnName(state.levelData);
+  renderLeaderboard(state.levelData.bees || []);
 }

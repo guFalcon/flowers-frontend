@@ -216,6 +216,10 @@ h1 {
   font-weight: 600;
 }
 
+.stats .own-name {
+  padding-right: 6px;
+}
+
 .stats .value {
   font-variant-numeric: tabular-nums;
   font-weight: 700;
@@ -401,4 +405,68 @@ h1 {
 
 .modal-close:hover {
   background: #e5e5e5;
+}
+
+/* ================================
+   LEADERBOARD
+   ================================ */
+
+/* Over the meadow, below the bees; clicks pass through to the play area */
+.leaderboard {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 4000;
+  pointer-events: none;
+  display: grid;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  color: lightgoldenrodyellow;
+  font-size: clamp(10px, 1.4vw, 18px);
+  font-weight: 600;
+}
+
+.leaderboard:empty {
+  display: none;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 1.6em 0.8em auto auto;
+  align-items: center;
+  column-gap: 6px;
+  padding: 1px 4px;
+  border-radius: 6px;
+}
+
+.leaderboard-row.is-self {
+  background: rgba(255, 215, 0, 0.35);
+  color: #fff;
+}
+
+.leaderboard-row .rank {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard-row .dot {
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.leaderboard-row .name {
+  max-width: 10em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-row .honey {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding-left: 8px;
 }
