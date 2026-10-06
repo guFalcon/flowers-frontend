@@ -46,6 +46,52 @@ h1 {
 }
 
 /* ================================
+   CLOUDS
+   ================================ */
+
+/* Above flowers and bees, clipped to the play area, never catching clicks */
+.cloud-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 6000;
+}
+
+/* Soft cloud of the cloud's diameter; the puffs stay inside it */
+.cloud {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.75) 0%,
+              rgba(255, 255, 255, 0.6) 55%, rgba(255, 255, 255, 0) 100%);
+  filter: blur(1px);
+}
+
+.cloud::before,
+.cloud::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.55) 0%,
+              rgba(255, 255, 255, 0) 100%);
+}
+
+.cloud::before {
+  width: 55%;
+  height: 55%;
+  left: 8%;
+  top: 18%;
+}
+
+.cloud::after {
+  width: 50%;
+  height: 50%;
+  right: 6%;
+  top: 30%;
+}
+
+/* ================================
    MULTI-BEE SYSTEM
    ================================ */
 
@@ -54,8 +100,8 @@ h1 {
   display: inline-block;
   isolation: isolate;
   pointer-events: none;
-  transition: left 0.4s linear, top 0.4s linear,
-              width 0.2s ease, height 0.2s ease, transform 0.12s;
+  /* left/top follow the server path frame by frame (bee.js), so they are not transitioned */
+  transition: width 0.2s ease, height 0.2s ease, transform 0.12s;
   z-index: 5000;
   transform: translate(-50%, -50%);
 }

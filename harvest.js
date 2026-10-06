@@ -3,8 +3,10 @@ import { state } from "./state.js";
 import { playArea } from "./layout.js";
 import { beeInstances } from "./bees.js";
 import { audioSystem } from "./audio.js";
+import { serverNow } from "./clock.js";
 
-// Click → fly the own bee there → ask the server to harvest under the bee on arrival
+// Click → the server computes the flight → the own bee follows the returned path → ask the server to
+// harvest under the bee at the path's arrival time
 export function enableHarvestOnClick() {
   playArea.addEventListener("pointerdown", (e) => {
     if (!state.yourBeeId) return;
@@ -21,20 +23,27 @@ export function enableHarvestOnClick() {
 
     myBee.incrementFlightId();
     const thisFlightId = myBee.flightId;
-    const duration = myBee.moveTo(relX, relY);
 
     fetch(SET_TARGET_URL(state.yourBeeId), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ x: relX, y: relY })
     })
-    .then(() => {
-      // start local flight timer (acts like await new Promise(...))
+    .then(res => {
+      if (!res.ok) throw new Error("setTarget answered " + res.status);
+      return res.json(); // { status, path: [{t, x, y}, …] }
+    })
+    .then(json => {
+      // A newer click has started another flight in the meantime
+      if (thisFlightId !== myBee.flightId) return;
+      const path = json.path;
+      myBee.setPath(path);
+      const arrival = path[path.length - 1].t;
       setTimeout(() => {
         // Only harvest if this is still the latest flight
         if (thisFlightId !== myBee.flightId) return;
         harvest();
-      }, duration);
+      }, Math.max(0, arrival - serverNow()));
     }).catch(e => console.error("Failed to set target", e));
   });
 }

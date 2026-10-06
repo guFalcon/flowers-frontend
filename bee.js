@@ -1,3 +1,22 @@
+import { serverNow } from "./clock.js";
+
+// Position on a path of keyframes [{t, x, y}] at server time t: the first keyframe before the flight, the
+// last one after it, linear in between (same as Bee.positionAt in the backend)
+export function positionOnPath(path, t) {
+  const first = path[0];
+  if (t <= first.t) return { x: first.x, y: first.y };
+  for (let i = 1; i < path.length; i++) {
+    const from = path[i - 1];
+    const to = path[i];
+    if (t < to.t) {
+      const f = (t - from.t) / (to.t - from.t);
+      return { x: from.x + (to.x - from.x) * f, y: from.y + (to.y - from.y) * f };
+    }
+  }
+  const last = path[path.length - 1];
+  return { x: last.x, y: last.y };
+}
+
 // ======================
 // Multi-instance Bee.js
 // ======================
@@ -5,10 +24,12 @@ export class Bee {
   beeRelX = 0.5;
   beeRelY = 0.5;
   jitterAmount = 0.025;
-  baseSpeed = 5; // seconds per unit distance
   flightId = 0;
   isFlying = false;
+  // Server time (epoch ms) at which the current flight ends
   flightEndTime = null;
+  path = null;
+  pathKey = null;
   jitterActive = false;
   jitterFrame = null;
 
@@ -64,20 +85,9 @@ export class Bee {
 
   // Put the bee at relative coords at once: no flight animation, no sound
   placeAt(relX, relY) {
-    this.wrapper.style.transition = "none";
     this.beeRelX = relX;
     this.beeRelY = relY;
     this.update(0, 0);
-  }
-
-  // Calculate travel duration in milliseconds
-  getTravelDurationInMillis(fromRelX, fromRelY, toRelX, toRelY) {
-    const dx = toRelX - fromRelX;
-    const dy = toRelY - fromRelY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const minDuration = 0.2; // seconds
-    const duration = Math.max(dist * this.baseSpeed, minDuration) * 1000;
-    return duration;
   }
 
   incrementFlightId() {
@@ -85,76 +95,53 @@ export class Bee {
     return this.flightId;
   }
 
-  // Smoothly move the bee to new relative coords
-  moveTo(relX, relY) {
-    this.audioSystem.play("bee");
+  // Follow the server path: keyframes [{t, x, y}] in server time, straight lines at constant speed in
+  // between. The bee is placed at its position for the current server time at once, so a bee that shows
+  // up mid-flight continues from there instead of flying in.
+  setPath(path) {
+    if (!Array.isArray(path) || path.length === 0) return;
+    const last = path[path.length - 1];
+    const key = `${last.t}|${last.x}|${last.y}`;
+    if (key === this.pathKey) return;
+    this.pathKey = key;
+    this.path = path;
+    this.stopJitter();
 
-    const myFlight = this.flightId;
-
-    // Get actual current position from DOM
-    const areaW = this.playArea.clientWidth;
-    const areaH = this.playArea.clientHeight;
-    const rect = this.wrapper.getBoundingClientRect();
-    const areaRect = this.playArea.getBoundingClientRect();
-    const currentLeft = rect.left + rect.width / 2 - areaRect.left;
-    const currentTop = rect.top + rect.height / 2 - areaRect.top;
-    const currentRelX = currentLeft / areaW;
-    const currentRelY = currentTop / areaH;
-
-    const duration = this.getTravelDurationInMillis(
-      currentRelX,
-      currentRelY,
-      relX,
-      relY
-    );
-
-    // Apply transition BEFORE updating target
-    this.wrapper.style.transition = `left ${
-      duration / 1000
-    }s linear, top ${duration / 1000}s linear, width 0.2s, height 0.2s, transform 0.12s`;
-
-    // Update target position
-    this.beeRelX = relX;
-    this.beeRelY = relY;
-
+    if (serverNow() >= last.t) {
+      this.endFlight();
+      return;
+    }
+    if (!this.isFlying) this.audioSystem.play("bee");
     this.isFlying = true;
-    this.flightEndTime = performance.now() + duration;
-    this.startJitter(duration, myFlight);
-
-    return duration;
+    this.flightEndTime = last.t;
+    this.jitterActive = true;
+    this.followPath();
   }
 
-  // Small random wiggle while flying
-  startJitter(duration = 700, flightId = this.flightId) {
-    this.stopJitter();
-    this.jitterActive = true;
-    const start = performance.now();
+  // One step per frame along the path, with a small random wiggle while flying
+  followPath() {
+    const t = serverNow();
+    if (t >= this.flightEndTime) {
+      this.endFlight();
+      return;
+    }
+    const p = positionOnPath(this.path, t);
+    this.beeRelX = p.x;
+    this.beeRelY = p.y;
+    const jitterX = (Math.random() - 0.5) * this.jitterAmount * 2;
+    const jitterY = (Math.random() - 0.5) * this.jitterAmount * 2;
+    this.update(jitterX, jitterY);
+    this.jitterFrame = requestAnimationFrame(() => this.followPath());
+  }
 
-    const animate = (now) => {
-      // Stop if another flight started
-      if (flightId !== this.flightId) {
-        this.jitterActive = false;
-        this.update(0, 0);
-        return;
-      }
-
-      const elapsed = now - start;
-      if (elapsed > duration) {
-        this.jitterActive = false;
-        this.update(0, 0);
-        this.isFlying = false;
-        this.flightEndTime = null;
-        this.audioSystem.stop("bee");
-        return;
-      }
-
-      const jitterX = (Math.random() - 0.5) * this.jitterAmount * 2;
-      const jitterY = (Math.random() - 0.5) * this.jitterAmount * 2;
-      this.update(jitterX, jitterY);
-      this.jitterFrame = requestAnimationFrame(animate);
-    };
-
-    this.jitterFrame = requestAnimationFrame(animate);
+  endFlight() {
+    const last = this.path[this.path.length - 1];
+    this.jitterActive = false;
+    this.jitterFrame = null;
+    this.placeAt(last.x, last.y);
+    if (this.isFlying) this.audioSystem.stop("bee");
+    this.isFlying = false;
+    this.flightEndTime = null;
   }
 
   stopJitter() {

@@ -15,7 +15,7 @@ export function renderBees(bees = []) {
     if (!bee) {
       bee = new Bee(playArea, audioSystem, b.id);
       bee.setTint(b.color);
-      // A bee shows up where the server says it is; the target check below then lets it fly on
+      // A bee shows up where the server says it is; its path below then lets it fly on from there
       if (typeof b.x === "number" && typeof b.y === "number") bee.placeAt(b.x, b.y);
       beeInstances.set(b.id, bee);
     }
@@ -29,14 +29,8 @@ export function renderBees(bees = []) {
       bee.wrapper.classList.remove('is-self');
     }
 
-    // movement (target preferred, fallback to current pos)
-    if (typeof b.targetX === "number" && typeof b.targetY === "number") {
-      const dx = Math.abs(b.targetX - bee.beeRelX);
-      const dy = Math.abs(b.targetY - bee.beeRelY);
-      if (dx > 0.001 || dy > 0.001) bee.moveTo(b.targetX, b.targetY);
-    } else if (typeof b.x === "number" && typeof b.y === "number") {
-      bee.moveTo(b.x, b.y);
-    }
+    // Movement follows the server path; setPath ignores a path the bee already follows
+    bee.setPath(b.path);
   });
 
   // GC
