@@ -22,11 +22,7 @@ export function connectEvents() {
       } else if (data.type === "harvest") {
         showHarvest(data);
       } else if (data.type === "level-update") {
-        let level = data.level;
-        if (typeof level === "string") {
-          try { level = JSON.parse(level); } catch { return; }
-        }
-        applyLevel(level);
+        applyLevel(data.level);
       }
     }
   });

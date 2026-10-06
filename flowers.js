@@ -7,12 +7,22 @@ export function updateFill(flowerEl) {
   fillEl.style.transform = `scale(${fillValue})`;
 }
 
+// Everything the drawn element depends on; the play-area size is included because the pixel
+// layout is derived from it, so the next level-update after a resize redraws the flowers
+function flowerSignature(data) {
+  return JSON.stringify([
+    data.x, data.y, data.size, data.petals, data.color, data.petalColors, data.stampColor,
+    playArea.clientWidth, playArea.clientHeight
+  ]);
+}
+
 // ====== Flower creation ======
 export function createFlower(data) {
   const root = document.createElement("div");
   root.className = "flower";
   root.dataset.fill = data.fill;
   root.dataset.rate = data.rate;
+  root.dataset.signature = flowerSignature(data);
   if (data.id) root.dataset.id = data.id;
 
   const areaW = playArea.clientWidth;
@@ -66,12 +76,28 @@ export function createFlower(data) {
   return root;
 }
 
+// Applies the level's flowers to the ones on screen by id: unchanged flowers keep their element and
+// only take over fill and rate, changed ones are redrawn, new ones added, missing ones removed
 export function buildLevel() {
   if (!state.levelData || !Array.isArray(state.levelData.flowers)) return;
-  Array.from(playArea.children).forEach(child => {
-    if (child.classList.contains("flower")) playArea.removeChild(child);
+  const existing = new Map();
+  playArea.querySelectorAll(".flower").forEach(el => existing.set(el.dataset.id, el));
+
+  state.levelData.flowers.forEach(f => {
+    const el = existing.get(f.id);
+    existing.delete(f.id);
+    if (el && el.dataset.signature === flowerSignature(f)) {
+      el.dataset.fill = f.fill;
+      el.dataset.rate = f.rate;
+      updateFill(el);
+    } else if (el) {
+      el.replaceWith(createFlower(f));
+    } else {
+      playArea.appendChild(createFlower(f));
+    }
   });
-  state.levelData.flowers.forEach(f => playArea.appendChild(createFlower(f)));
+
+  existing.forEach(el => el.remove());
 }
 
 // Harvest by any player (SSE `harvest` event): set the fill and flash the center
@@ -88,7 +114,8 @@ export function showHarvest(data) {
   }
 }
 
-// Passive flower fill growth
+// Passive flower fill growth, predicted at the server's pace (rate per second); level-update and
+// harvest events overwrite the predicted value
 export function startFillGrowth() {
   setInterval(() => {
     document.querySelectorAll(".flower").forEach(flowerEl => {
@@ -98,5 +125,5 @@ export function startFillGrowth() {
       flowerEl.dataset.fill = val;
       updateFill(flowerEl);
     });
-  }, 2000);
+  }, 1000);
 }
