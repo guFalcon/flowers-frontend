@@ -4,25 +4,41 @@ import { playArea } from "./layout.js";
 import { beeInstances } from "./bees.js";
 import { audioSystem } from "./audio.js";
 import { serverNow } from "./clock.js";
+import { init } from "./level.js";
+
+// Running rejoin, shared by rapid clicks so only one level request is in flight
+let rejoining = null;
+
+// Loads the level again, which re-registers the own bee on the server and shows it
+function rejoin() {
+  if (!rejoining) rejoining = init().finally(() => { rejoining = null; });
+  return rejoining;
+}
+
+function ownBee() {
+  return state.yourBeeId ? beeInstances?.get?.(state.yourBeeId) : undefined;
+}
 
 // Click → the server computes the flight → the own bee follows the returned path → ask the server to
 // harvest under the bee at the path's arrival time
 export function enableHarvestOnClick() {
-  playArea.addEventListener("pointerdown", (e) => {
-    if (!state.yourBeeId) return;
-
+  playArea.addEventListener("pointerdown", async (e) => {
     const rect = playArea.getBoundingClientRect();
     const relX = (e.clientX - rect.left) / rect.width;
     const relY = (e.clientY - rect.top) / rect.height;
 
-    const myBee = beeInstances?.get?.(state.yourBeeId);
+    let myBee = ownBee();
     if (!myBee) {
-      console.warn("No bee instance for yourBeeId yet");
-      return;
+      // The own bee is not on screen (e.g. removed for inactivity): rejoin, then fly to the click
+      await rejoin();
+      myBee = ownBee();
+      if (!myBee) {
+        console.warn("Own bee still missing after rejoin");
+        return;
+      }
     }
 
-    myBee.incrementFlightId();
-    const thisFlightId = myBee.flightId;
+    const thisFlightId = myBee.incrementFlightId();
 
     fetch(SET_TARGET_URL(state.yourBeeId), {
       method: "POST",
@@ -34,14 +50,16 @@ export function enableHarvestOnClick() {
       return res.json(); // { status, path: [{t, x, y}, …] }
     })
     .then(json => {
-      // A newer click has started another flight in the meantime
-      if (thisFlightId !== myBee.flightId) return;
+      // The own bee as it is on screen now, which may differ from the one at click time
+      const bee = ownBee();
+      // Gone, or a newer click has started another flight in the meantime
+      if (!bee || thisFlightId !== bee.flightId) return;
       const path = json.path;
-      myBee.setPath(path);
+      bee.setPath(path);
       const arrival = path[path.length - 1].t;
       setTimeout(() => {
         // Only harvest if this is still the latest flight
-        if (thisFlightId !== myBee.flightId) return;
+        if (thisFlightId !== ownBee()?.flightId) return;
         harvest();
       }, Math.max(0, arrival - serverNow()));
     }).catch(e => console.error("Failed to set target", e));
